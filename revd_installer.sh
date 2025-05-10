@@ -2,7 +2,7 @@
 
 # OpenWRT Telegram Bot Service Installer
 # Created by REVD.CLOUD
-# Improved version with complete dependency installation
+# Improved version with GitHub repository integration
 
 echo "
 ╔═══════════════════════════════════╗
@@ -21,16 +21,9 @@ fi
 # Define paths
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 INIT_SCRIPT="/etc/init.d/revd"
-ROOT_DIR="/root/revd"
-BOT_SCRIPT="$SCRIPT_DIR/bot_openwrt.py"
-PLUGINS_DIR="$SCRIPT_DIR/plugins"
-REVD_SCRIPT="$SCRIPT_DIR/revd"
-
-# Check if bot script exists
-if [ ! -f "$BOT_SCRIPT" ]; then
-    echo "❌ Skrip bot tidak ditemukan di: $BOT_SCRIPT"
-    exit 1
-fi
+ROOT_DIR="/root/REVDBOT"
+PLUGINS_DIR="$ROOT_DIR/plugins"
+GITHUB_REPO="https://github.com/revaldieka/telebotaku.git"
 
 # Create root directory if it doesn't exist
 if [ ! -d "$ROOT_DIR" ]; then
@@ -38,82 +31,95 @@ if [ ! -d "$ROOT_DIR" ]; then
     mkdir -p "$ROOT_DIR"
 fi
 
+# Install dependencies
+echo "📦 Memeriksa dan menginstal dependensi yang diperlukan..."
+
+# Update package list
+echo "Memperbarui daftar paket..."
+opkg update
+
+# Install required packages
+echo "Menginstal paket pendukung..."
+opkg install git python3 python3-pip openssh-sftp-server vnstat
+
+# Install git if not already installed
+if ! command -v git >/dev/null 2>&1; then
+    echo "Menginstal git..."
+    opkg install git
+fi
+
+# Install python3 if not already installed
+if ! command -v python3 >/dev/null 2>&1; then
+    echo "Menginstal Python3..."
+    opkg install python3 python3-pip
+fi
+
+# Clone the repository
+echo "📥 Mengkloning repository dari GitHub..."
+if [ -d "$ROOT_DIR/.git" ]; then
+    echo "Repository sudah ada, melakukan pull untuk pembaruan..."
+    cd "$ROOT_DIR" && git pull
+    if [ $? -ne 0 ]; then
+        echo "❌ Gagal memperbarui repository. Mencoba clone ulang..."
+        rm -rf "$ROOT_DIR"/*
+        git clone "$GITHUB_REPO" "$ROOT_DIR"
+    fi
+else
+    git clone "$GITHUB_REPO" "$ROOT_DIR"
+    if [ $? -ne 0 ]; then
+        echo "❌ Gagal mengkloning repository GitHub."
+        echo "Periksa koneksi internet atau ketersediaan repository."
+        exit 1
+    fi
+fi
+
+# Install Python dependencies
+echo "📦 Menginstal dependensi Python..."
+pip3 install telethon configparser asyncio
+
 # Make sure the plugins directory exists
 if [ ! -d "$PLUGINS_DIR" ]; then
     echo "📁 Membuat direktori plugins..."
     mkdir -p "$PLUGINS_DIR"
 fi
 
-# Make sure the plugins directory exists in ROOT_DIR
-if [ ! -d "$ROOT_DIR/plugins" ]; then
-    echo "📁 Membuat direktori plugins di $ROOT_DIR..."
-    mkdir -p "$ROOT_DIR/plugins"
+# Make all scripts in plugins directory executable
+if [ -d "$PLUGINS_DIR" ]; then
+    echo "🔧 Membuat semua script di direktori plugins dapat dieksekusi..."
+    chmod +x "$PLUGINS_DIR"/*.sh 2>/dev/null
+    echo "✅ Script plugins siap digunakan"
 fi
 
-# Copy all required scripts to plugins directory
-for script in speedtest.sh reboot.sh ping.sh clear_ram.sh vnstat.sh system.sh; do
-    if [ -f "$SCRIPT_DIR/$script" ]; then
-        echo "📄 Menginstal $script ke direktori plugins..."
-        cp "$SCRIPT_DIR/$script" "$PLUGINS_DIR/"
-        chmod +x "$PLUGINS_DIR/$script"
-        
-        # Also copy to ROOT_DIR/plugins
-        cp "$SCRIPT_DIR/$script" "$ROOT_DIR/plugins/"
-        chmod +x "$ROOT_DIR/plugins/$script"
-    else
-        echo "⚠️  Script tidak ditemukan: $script"
-    fi
-done
-
-# Install system dependencies
-echo "📦 Memeriksa dan menginstal dependensi sistem..."
-echo "Memperbarui repositori paket..."
-opkg update
-
-echo "Menginstal Python3 dan paket pendukung..."
-opkg install python3 python3-pip
-
-echo "Menginstal utilitas jaringan dan monitoring..."
-opkg install speedtest-cli curl
-
-# Install Python dependencies using pip
-echo "📦 Menginstal paket Python dengan pip..."
-pip3 install telethon configparser speedtest-cli
-# Removed paramiko since it's no longer needed
-
-# Test speedtest-cli
-echo "🚀 Menjalankan speedtest-cli untuk verifikasi instalasi..."
-speedtest-cli --simple >/dev/null 2>&1 &
-
-# Check if revd script exists in source directory and copy it
-if [ -f "$REVD_SCRIPT" ]; then
-    echo "📄 Menyalin skrip init 'revd' dari folder sumber ke /etc/init.d/..."
-    cp "$REVD_SCRIPT" "$INIT_SCRIPT"
-    chmod +x "$INIT_SCRIPT"
-    echo "✅ Skrip init berhasil disalin dan dibuat executable"
+# Make the main bot script executable
+if [ -f "$ROOT_DIR/bot_openwrt.py" ]; then
+    chmod +x "$ROOT_DIR/bot_openwrt.py"
+    echo "✅ Script bot utama siap digunakan"
 else
-    echo "⚠️  Skrip init 'revd' tidak ditemukan di direktori sumber."
-    echo "📝 Membuat skrip init baru..."
-    
-    # Create init script
-    cat > "$INIT_SCRIPT" << 'EOF'
+    echo "⚠️ Script bot utama tidak ditemukan!"
+    echo "Pastikan repository GitHub berisi file bot_openwrt.py"
+    exit 1
+fi
+
+# Download the init script to /etc/init.d
+echo "📄 Membuat script init 'revd'..."
+cat > "$INIT_SCRIPT" << EOF
 #!/bin/sh /etc/rc.common
 
 START=99
 USE_PROCD=1
 PROG=/usr/bin/python3
-SCRIPT_PATH=/root/revd/bot_openwrt.py
+SCRIPT_PATH=$ROOT_DIR/bot_openwrt.py
 
 start_service() {
     # Check if script exists
-    if [ ! -f "$SCRIPT_PATH" ]; then
-        echo "Skrip bot tidak ditemukan di $SCRIPT_PATH"
+    if [ ! -f "\$SCRIPT_PATH" ]; then
+        echo "Skrip bot tidak ditemukan di \$SCRIPT_PATH"
         return 1
     fi
     
     # Check if Python3 is installed
-    if [ ! -x "$PROG" ]; then
-        echo "Python3 tidak ditemukan di $PROG"
+    if [ ! -x "\$PROG" ]; then
+        echo "Python3 tidak ditemukan di \$PROG"
         return 1
     fi
     
@@ -122,10 +128,10 @@ start_service() {
     
     # Configure the service
     procd_open_instance
-    procd_set_param command $PROG $SCRIPT_PATH
+    procd_set_param command \$PROG \$SCRIPT_PATH
     procd_set_param stderr 1
     procd_set_param stdout 1
-    procd_set_param respawn ${respawn_threshold:-3600} ${respawn_timeout:-5} ${respawn_retry:-5}
+    procd_set_param respawn \${respawn_threshold:-3600} \${respawn_timeout:-5} \${respawn_retry:-5}
     procd_close_instance
 }
 
@@ -134,7 +140,7 @@ stop_service() {
     logger -t revd "Menghentikan layanan Telegram Bot"
     
     # Find and kill all Python processes running the bot script
-    kill -9 $(ps | grep "$SCRIPT_PATH" | grep -v grep | awk '{print $1}') 2>/dev/null
+    kill -9 \$(ps | grep "\$SCRIPT_PATH" | grep -v grep | awk '{print \$1}') 2>/dev/null
 }
 
 reload_service() {
@@ -143,91 +149,113 @@ reload_service() {
 }
 EOF
 
-    # Make init script executable
-    chmod +x "$INIT_SCRIPT"
-fi
+# Make init script executable
+chmod +x "$INIT_SCRIPT"
 
-# Copy bot script to ROOT_DIR
-echo "📄 Menyalin skrip bot ke $ROOT_DIR/..."
-cp "$BOT_SCRIPT" "$ROOT_DIR/"
-chmod +x "$ROOT_DIR/bot_openwrt.py"
+# Get API credentials from user
+echo "📝 Masukkan kredensial API Telegram dan informasi admin:"
 
-# Copy config.ini if it exists
-if [ -f "$SCRIPT_DIR/config.ini" ]; then
-    echo "📄 Menyalin config.ini ke $ROOT_DIR/..."
-    cp "$SCRIPT_DIR/config.ini" "$ROOT_DIR/"
-    chmod 600 "$ROOT_DIR/config.ini"
-else
-    # Create a default config.ini if it doesn't exist
-    echo "📝 Membuat config.ini default..."
-    cat > "$ROOT_DIR/config.ini" << 'EOF'
+# Ask for API ID with validation
+while true; do
+    read -p "API ID: " api_id
+    if [ -n "$api_id" ]; then
+        # Validate API ID (should be numeric)
+        if echo "$api_id" | grep -q "^[0-9]\+$"; then
+            break
+        else
+            echo "⚠️ API ID harus berupa angka. Silakan coba lagi."
+        fi
+    else
+        echo "⚠️ API ID tidak boleh kosong! Dapatkan dari https://my.telegram.org"
+    fi
+done
+
+# Ask for API Hash with validation
+while true; do
+    read -p "API Hash: " api_hash
+    if [ -n "$api_hash" ]; then
+        # Validate API Hash (should be hexadecimal, 32 chars)
+        if echo "$api_hash" | grep -q "^[0-9a-fA-F]\{32\}$"; then
+            break
+        else
+            echo "⚠️ API Hash harus berupa kode hex 32 karakter. Silakan coba lagi."
+        fi
+    else
+        echo "⚠️ API Hash tidak boleh kosong! Dapatkan dari https://my.telegram.org"
+    fi
+done
+
+# Ask for Bot Token with validation
+while true; do
+    read -p "Bot Token: " bot_token
+    if [ -n "$bot_token" ]; then
+        # Validate Bot Token (should contain a colon)
+        if echo "$bot_token" | grep -q ":"; then
+            break
+        else
+            echo "⚠️ Bot Token tidak valid. Seharusnya berformat seperti 123456789:ABCDEF1234567890abcdef"
+        fi
+    else
+        echo "⚠️ Bot Token tidak boleh kosong! Dapatkan dari @BotFather"
+    fi
+done
+
+# Ask for Admin ID with validation
+while true; do
+    read -p "Admin ID: " admin_id
+    if [ -n "$admin_id" ]; then
+        # Validate Admin ID (should be numeric)
+        if echo "$admin_id" | grep -q "^[0-9]\+$"; then
+            break
+        else
+            echo "⚠️ Admin ID harus berupa angka. Silakan coba lagi."
+        fi
+    else
+        echo "⚠️ Admin ID tidak boleh kosong! Ini adalah ID Telegram Anda."
+    fi
+done
+
+# Ask for Device Name
+read -p "Device Name [default: OpenWRT | REVD.CLOUD]: " device_name
+device_name=${device_name:-"OpenWRT | REVD.CLOUD"}
+
+# Create or update config.ini
+echo "📝 Membuat config.ini dengan kredensial yang dimasukkan..."
+cat > "$ROOT_DIR/config.ini" << EOF
 [Telegram]
-api_id = 25188016
-api_hash = 31d1351ef7b53bc85fd6ec96a9db397a
-bot_token = 6533113920:AAGbuDyx9OPzfF0qSL-GTsGiHc4et6QyArs
-admin_id = 866930833
+api_id = $api_id
+api_hash = $api_hash
+bot_token = $bot_token
+admin_id = $admin_id
 
 [OpenWRT]
-host = 192.168.1.1
-username = root
-password = 990701xx
-device_name = OpenWRT | REVD.CLOUD
+device_name = $device_name
 EOF
-    chmod 600 "$ROOT_DIR/config.ini"
-fi
 
-# Run speedtest once to initialize
-echo "🚀 Menjalankan speedtest-cli untuk inisialisasi..."
-speedtest-cli --simple >/dev/null 2>&1 &
+echo "✅ File config.ini berhasil dibuat."
 
-# Initialize vnstat database if possible
-if command -v vnstat >/dev/null 2>&1; then
-    echo "📊 Menginisialisasi database vnstat..."
-    MAIN_INTERFACE=$(ip route | grep default | awk '{print $5}' | head -n 1)
-    if [ -n "$MAIN_INTERFACE" ]; then
-        vnstat -i "$MAIN_INTERFACE" --create >/dev/null 2>&1
-    fi
-fi
+# Enable and start service
+echo "🔄 Mengaktifkan dan memulai layanan bot..."
+/etc/init.d/revd enable
+/etc/init.d/revd start
 
-# Enable and start the service
-echo "🚀 Mengaktifkan dan memulai layanan bot..."
-"$INIT_SCRIPT" enable
-"$INIT_SCRIPT" start
-
-echo "
-✅ Instalasi Selesai!
-
-Bot Telegram Anda telah diinstal sebagai layanan sistem
-dan akan otomatis dimulai saat boot.
-
-Nama layanan: revd
-Lokasi bot: $ROOT_DIR/bot_openwrt.py
-Skrip init: $INIT_SCRIPT
-
-Perintah:
- - Mulai:   /etc/init.d/revd start
- - Berhenti: /etc/init.d/revd stop
- - Restart:  /etc/init.d/revd restart
- - Status:   service revd status
-"
-
-# Check if service is running
-if pgrep -f "python3 $ROOT_DIR/bot_openwrt.py" > /dev/null; then
-    echo "✅ Bot sedang berjalan!"
+# Check if service started successfully
+sleep 2
+if pgrep -f "python3.*bot_openwrt.py" > /dev/null; then
+    echo "✅ Bot berhasil dijalankan!"
+    echo "Bot Telegram sudah aktif dengan nama: $device_name"
+    echo "Anda sekarang dapat mengakses bot melalui Telegram."
 else
-    echo "⚠️  Bot tidak berjalan. Periksa log dengan: logread | grep revd"
-    echo "Mencoba memulai ulang layanan..."
-    "$INIT_SCRIPT" restart
-    sleep 3
-    
-    # Check again
-    if pgrep -f "python3 $ROOT_DIR/bot_openwrt.py" > /dev/null; then
-        echo "✅ Bot berhasil dimulai setelah percobaan ulang!"
-    else
-        echo "❌ Bot masih tidak berjalan. Periksa log untuk detail lebih lanjut."
-    fi
+    echo "⚠️ Bot belum berjalan. Coba jalankan manual dengan perintah:"
+    echo "   /etc/init.d/revd start"
+    echo "   Atau lihat error dengan: python3 $ROOT_DIR/bot_openwrt.py"
 fi
 
-echo "
-By REVD.CLOUD
-"
+# Show final instructions
+echo ""
+echo "📱 Cara menggunakan bot:"
+echo "1. Buka Telegram dan cari bot Anda"
+echo "2. Kirim perintah /start untuk memulai"
+echo "3. Gunakan menu dan tombol yang tersedia"
+echo ""
+echo "✅ Instalasi selesai!"
