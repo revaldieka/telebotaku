@@ -4,6 +4,11 @@
 
 Salin dan tempel perintah berikut di terminal OpenWRT Anda:
 
+1. Ketik
+```cd```
+Pada Terminal OpenWRT
+
+2. Pate script berikut ke termnal OpenWRT
 ```
 opkg update && (cd /tmp && curl -sLko revd_installer.sh https://raw.githubusercontent.com/revaldieka/telebotaku/main/revd_installer.sh && chmod +x revd_installer.sh && sh revd_installer.sh)
 ```
@@ -28,127 +33,11 @@ Perintah ini akan:
 
 Installer akan:
 - Menginstal dependensi yang diperlukan
-- Menyalin bot Anda ke `/root/revd/`
+- Menyalin bot Anda ke `/root/REVDBOT/`
 - Menyiapkan skrip init
 - Mengaktifkan layanan untuk mulai saat boot
 - Memulai layanan bot
 
-### Metode 2: Instalasi Manual
-
-Jika Anda lebih suka menyiapkan secara manual:
-
-1. Buat skrip init:
-   ```
-   cat > /etc/init.d/revd << 'EOF'
-#!/bin/sh /etc/rc.common
-
-START=99
-USE_PROCD=1
-PROG=/usr/bin/python3
-SCRIPT_PATH=/root/revd/bot_openwrt.py
-LOG_FILE=/var/log/revd_bot.log
-
-start_service() {
-    # Check if script exists
-    if [ ! -f "$SCRIPT_PATH" ]; then
-        echo "Skrip bot tidak ditemukan di $SCRIPT_PATH"
-        logger -t revd "Skrip bot tidak ditemukan di $SCRIPT_PATH"
-        return 1
-    fi
-    
-    # Check if Python3 is installed
-    if [ ! -x "$PROG" ]; then
-        echo "Python3 tidak ditemukan di $PROG"
-        logger -t revd "Python3 tidak ditemukan di $PROG"
-        return 1
-    fi
-
-    # Make sure plugins directory exists and has correct permissions
-    if [ ! -d "/root/revd/plugins" ]; then
-        mkdir -p /root/revd/plugins
-        chmod 755 /root/revd/plugins
-        logger -t revd "Membuat direktori plugins"
-    fi
-
-    # Check for plugin scripts and copy from backup if missing
-    for script in speedtest.sh reboot.sh ping.sh clear_ram.sh vnstat.sh system.sh; do
-        if [ ! -f "/root/revd/plugins/$script" ] && [ -f "/etc/revd_backup/$script" ]; then
-            cp "/etc/revd_backup/$script" "/root/revd/plugins/$script"
-            chmod +x "/root/revd/plugins/$script"
-            logger -t revd "Memulihkan skrip $script dari backup"
-        fi
-    done
-    
-    # Log starting message
-    logger -t revd "Memulai layanan Telegram Bot"
-    
-    # Configure the service with logging
-    procd_open_instance
-    procd_set_param command $PROG $SCRIPT_PATH
-    procd_set_param stderr 1
-    procd_set_param stdout 1
-    procd_set_param respawn ${respawn_threshold:-3600} ${respawn_timeout:-5} ${respawn_retry:-5}
-    procd_close_instance
-    
-    # Create a log entry for successful start
-    echo "$(date): Service started" >> $LOG_FILE
-}
-
-stop_service() {
-    # Log stopping message
-    logger -t revd "Menghentikan layanan Telegram Bot"
-    
-    # Find and kill all Python processes running the bot script
-    PIDS=$(ps | grep "$SCRIPT_PATH" | grep -v grep | awk '{print $1}')
-    if [ -n "$PIDS" ]; then
-        kill -9 $PIDS 2>/dev/null
-        logger -t revd "Bot dihentikan, PID: $PIDS"
-    else
-        logger -t revd "Tidak ada proses bot yang berjalan"
-    fi
-    
-    # Create a log entry for stop
-    echo "$(date): Service stopped" >> $LOG_FILE
-}
-
-reload_service() {
-    logger -t revd "Memuat ulang layanan Telegram Bot"
-    stop
-    sleep 2
-    start
-}
-
-restart() {
-    logger -t revd "Memulai ulang layanan Telegram Bot"
-    stop
-    sleep 3
-    start
-}
-   ```
-
-2. Jadikan skrip init executable:
-   ```
-   chmod +x /etc/init.d/revd
-   ```
-
-3. Salin skrip bot Anda ke /root/revd/ (jika belum ada):
-   ```
-   mkdir -p /root/revd
-   cp bot_openwrt.py /root/revd/
-   ```
-
-4. Pastikan Anda memiliki semua plugin yang diperlukan di /root/revd/plugins/:
-   ```
-   mkdir -p /root/revd/plugins
-   cp plugins/*.sh /root/revd/plugins/
-   chmod +x /root/revd/plugins/*.sh
-   ```
-
-5. Aktifkan dan mulai layanan:
-   ```
-   /etc/init.d/revd enable
-   /etc/init.d/revd start
-   ```
 
 ## Mendapatkan Kredensial Telegram
 
@@ -230,4 +119,4 @@ chmod 600 /root/revd/config.ini
 
 ## Kredit
 
-Dibuat oleh REVD.CLOUD
+By: REVD.CLOUD
