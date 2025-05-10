@@ -17,37 +17,57 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 def load_config() -> Dict[str, Any]:
-    """Load configuration from config.ini or environment variables."""
+    """Load configuration from config.ini."""
     config = {
-        # Default values
-        'api_id': os.getenv('TELEGRAM_API_ID', '25188016'),
-        'api_hash': os.getenv('TELEGRAM_API_HASH', '31d1351ef7b53bc85fd6ec96a9db397a'),
-        'bot_token': os.getenv('TELEGRAM_BOT_TOKEN', '5369509208:AAESs_Eaw087Q2h1dwlxcE_WsQDOfbwmCB0'),
-        'admin_id': int(os.getenv('ADMIN_ID', '866930833')),
-        'device_name': os.getenv('DEVICE_NAME', 'OpenWRT | REVD.CLOUD')
+        # Empty defaults - will be filled from config.ini
+        'api_id': '',
+        'api_hash': '',
+        'bot_token': '',
+        'admin_id': 0,
+        'device_name': 'OpenWRT'
     }
 
-    # Validate configuration
-    if not all([config['api_id'], config['api_hash'], config['bot_token']]):
-        logger.error("Missing required configuration values.")
-        raise ValueError("Missing required configuration values.")
-
-    # Try to load from config file if it exists
-    config_file = Path('config.ini')
-    if config_file.exists():
+    # Try to load from config file
+    script_dir = Path(__file__).parent
+    config_file = script_dir / 'config.ini'
+    
+    if not config_file.exists():
+        logger.error("Config file not found: %s", config_file)
+        raise ValueError(f"Config file not found: {config_file}")
+    
+    try:
         parser = configparser.ConfigParser()
         parser.read(config_file)
+        
         if 'Telegram' in parser:
-            config['api_id'] = parser['Telegram'].get('api_id', config['api_id'])
-            config['api_hash'] = parser['Telegram'].get('api_hash', config['api_hash'])
-            config['bot_token'] = parser['Telegram'].get('bot_token', config['bot_token'])
-            config['admin_id'] = int(parser['Telegram'].get('admin_id', str(config['admin_id'])))
+            if not parser['Telegram'].get('api_id'):
+                raise ValueError("API ID is missing in config.ini")
+            
+            if not parser['Telegram'].get('api_hash'):
+                raise ValueError("API Hash is missing in config.ini")
+            
+            if not parser['Telegram'].get('bot_token'):
+                raise ValueError("Bot token is missing in config.ini")
+            
+            if not parser['Telegram'].get('admin_id'):
+                raise ValueError("Admin ID is missing in config.ini")
+            
+            config['api_id'] = parser['Telegram'].get('api_id')
+            config['api_hash'] = parser['Telegram'].get('api_hash')
+            config['bot_token'] = parser['Telegram'].get('bot_token')
+            config['admin_id'] = int(parser['Telegram'].get('admin_id'))
                 
         if 'OpenWRT' in parser:
             config['device_name'] = parser['OpenWRT'].get('device_name', config['device_name'])
-
-    logger.info(f"Admin ID: {config['admin_id']}")
-    return config
+        
+        logger.info(f"Configuration loaded successfully")
+        logger.info(f"Admin ID: {config['admin_id']}")
+        logger.info(f"Device name: {config['device_name']}")
+        return config
+        
+    except Exception as e:
+        logger.error(f"Error loading config: {str(e)}")
+        raise
 
 # Load configuration
 CONFIG = load_config()
@@ -89,7 +109,7 @@ class OpenWRTBot:
                 connection_retries=None  # Retry connection indefinitely
             )
             
-            # Start the client
+            # Start the client with bot token from config
             await self.client.start(bot_token=self.config['bot_token'])
             
             # Set up command handlers
@@ -188,34 +208,22 @@ class OpenWRTBot:
             logger.error(f"Command failed ({command}): {str(e)}")
             return f"Error executing command: {str(e)}"
     
-    def copy_script(self, script_name: str) -> bool:
-        """Copy a script to /tmp directory."""
-        try:
-            source_path = self.script_dir / script_name
-            if not source_path.exists():
-                logger.error(f"Script not found: {source_path}")
-                return False
-            
-            # Use cp command to copy the script
-            dest_path = f"/tmp/{script_name}"
-            command = f"cp {source_path} {dest_path} && chmod +x {dest_path}"
-            self.run_command(command)
-            
-            logger.info(f"Script {script_name} copied successfully")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to copy script {script_name}: {str(e)}")
-            return False
-    
     def run_script(self, script_name: str, *args) -> str:
         """Run a script on the OpenWRT device and return its output."""
         try:
-            # Ensure the script is copied to /tmp and executable
-            if not self.copy_script(script_name):
-                return f"Error: Failed to copy {script_name}"
+            # Build the script path - using directly from the plugins directory
+            script_path = self.script_dir / script_name
+            
+            # Check if script exists
+            if not script_path.exists():
+                logger.error(f"Script not found: {script_path}")
+                return f"Error: Script {script_name} not found"
+            
+            # Make sure it's executable
+            os.chmod(script_path, 0o755)
             
             # Build the command with arguments
-            command = f"/tmp/{script_name}"
+            command = f"{script_path}"
             if args:
                 command += " " + " ".join(str(arg) for arg in args)
             
@@ -467,23 +475,6 @@ async def main():
         if not plugins_dir.exists():
             plugins_dir.mkdir(parents=True)
             logger.info(f"Created plugins directory at {plugins_dir}")
-        
-        # Copy all required scripts to the plugins directory
-        for script_name in ["speedtest.sh", "reboot.sh", "ping.sh", "clear_ram.sh", "vnstat.sh", "system.sh"]:
-            source_path = Path(__file__).parent / script_name
-            dest_path = plugins_dir / script_name
-            
-            # Check if source exists
-            if source_path.exists():
-                # Copy script to plugins directory if not already there
-                if not dest_path.exists():
-                    with open(source_path, 'r') as src, open(dest_path, 'w') as dst:
-                        dst.write(src.read())
-                    logger.info(f"Copied {script_name} to plugins directory")
-                    # Make the script executable
-                    os.chmod(dest_path, 0o755)
-            else:
-                logger.warning(f"Script {script_name} not found in root directory")
         
         # Create and run the bot
         bot = OpenWRTBot(CONFIG)
