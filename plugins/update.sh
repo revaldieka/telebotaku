@@ -1,96 +1,77 @@
 #!/bin/sh
 
-# OpenWRT Telegram Bot Update Script
-# Created based on REVD.CLOUD installer
+# Update script for OpenWRT Telegram Bot 
+# This script should be placed in the plugins directory
 
-echo "
-╔═══════════════════════════════════╗
-║  OpenWRT Telegram Bot Updater     ║
-║           REVD.CLOUD              ║
-╚═══════════════════════════════════╝
-"
-
-# Define paths
-ROOT_DIR="/root/REVDBOT"
-PLUGINS_DIR="$ROOT_DIR/plugins"
+# Define the GitHub repository and directories
 GITHUB_REPO="https://github.com/revaldieka/telebotaku.git"
-TEMP_DIR="/tmp/bot_update"
-LOG_FILE="/var/log/revd_update.log"
+ROOT_DIR="/root/REVDBOT"
+TEMP_DIR="/tmp/bot_update_temp"
 
-# Log function
-log_message() {
-    echo "$(date): $1" >> "$LOG_FILE"
-    echo "$1"
-}
-
-log_message "Starting bot update process..."
-
-# Create temp directory for update
+# Create temporary directory for update
 if [ -d "$TEMP_DIR" ]; then
     rm -rf "$TEMP_DIR"
 fi
 mkdir -p "$TEMP_DIR"
 
-# Clone repository to temp directory
-log_message "Cloning repository from GitHub..."
+echo "🔄 Starting bot update process..."
+
+# Clone the repository to temporary directory
+echo "📥 Downloading updates from GitHub..."
 if git clone "$GITHUB_REPO" "$TEMP_DIR"; then
-    log_message "Repository cloned successfully."
+    echo "✅ Repository cloned successfully."
 else
-    log_message "Failed to clone repository. Check your internet connection."
+    echo "❌ Failed to clone repository. Check your internet connection."
+    rm -rf "$TEMP_DIR"
     exit 1
 fi
 
-# Backup current bot script
-log_message "Backing up current bot script..."
-cp "$ROOT_DIR/bot_openwrt.py" "$ROOT_DIR/bot_openwrt.py.bak" 2>/dev/null
-
-# Update bot_openwrt.py
-if [ -f "$TEMP_DIR/bot_openwrt.py" ]; then
-    log_message "Updating main bot script..."
-    cp "$TEMP_DIR/bot_openwrt.py" "$ROOT_DIR/bot_openwrt.py"
-    chmod +x "$ROOT_DIR/bot_openwrt.py"
-else
-    log_message "Warning: bot_openwrt.py not found in repository."
+# Check if update files exist
+if [ ! -f "$TEMP_DIR/bot_openwrt.py" ]; then
+    echo "❌ Update files not found in repository."
+    rm -rf "$TEMP_DIR"
+    exit 1
 fi
 
+# Backup current files
+echo "💾 Creating backup of current files..."
+cp "$ROOT_DIR/bot_openwrt.py" "$ROOT_DIR/bot_openwrt.py.bak" 2>/dev/null
+
+# Update main bot script
+echo "📝 Updating main bot script..."
+cp "$TEMP_DIR/bot_openwrt.py" "$ROOT_DIR/bot_openwrt.py"
+chmod +x "$ROOT_DIR/bot_openwrt.py"
+
 # Update plugins
+echo "🔌 Updating plugins..."
 if [ -d "$TEMP_DIR/plugins" ]; then
-    log_message "Updating plugin scripts..."
-    
-    # Create plugins directory if it doesn't exist
-    if [ ! -d "$PLUGINS_DIR" ]; then
-        mkdir -p "$PLUGINS_DIR"
-        chmod 755 "$PLUGINS_DIR"
-    fi
-    
-    # Copy all plugin files
-    for file in "$TEMP_DIR/plugins"/*; do
-        if [ -f "$file" ]; then
-            filename=$(basename "$file")
-            cp "$file" "$PLUGINS_DIR/$filename"
-            chmod +x "$PLUGINS_DIR/$filename"
-            log_message "Updated plugin: $filename"
+    mkdir -p "$ROOT_DIR/plugins"
+    for plugin in "$TEMP_DIR/plugins"/*; do
+        if [ -f "$plugin" ]; then
+            plugin_name=$(basename "$plugin")
+            cp "$plugin" "$ROOT_DIR/plugins/$plugin_name"
+            chmod +x "$ROOT_DIR/plugins/$plugin_name"
+            echo "  ✓ Updated plugin: $plugin_name"
         fi
     done
 else
-    log_message "Warning: plugins directory not found in repository."
+    echo "  ⚠️ No plugins directory found in update."
 fi
 
-# Clean up temp directory
+# Clean up
 rm -rf "$TEMP_DIR"
-log_message "Cleaned up temporary files."
+echo "🧹 Cleaned up temporary files."
 
-# Restart the bot service
-log_message "Restarting bot service..."
+# Restart bot service
+echo "🔄 Restarting bot service..."
 if /etc/init.d/revd restart; then
-    log_message "Bot service restarted successfully."
+    echo "✅ Bot service restarted successfully."
 else
-    log_message "Failed to restart bot service. Try manually with: /etc/init.d/revd restart"
+    echo "⚠️ Failed to restart service. Please restart manually with: /etc/init.d/revd restart"
 fi
 
-log_message "Update process completed."
 echo "
-✅ Bot update completed!
-Bot has been updated to the latest version from GitHub.
-The service has been restarted automatically.
-"
+✅ Update completed successfully!
+Bot has been updated to the latest version.
+If you encounter any issues, you can restore the backup:
+  cp $ROOT_DIR/bot_openwrt.py.bak $ROOT_DIR/bot_openwrt.py"
