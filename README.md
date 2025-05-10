@@ -19,9 +19,9 @@ Perintah ini akan:
 - Memberikan izin eksekusi pada skrip
 - Menjalankan installer secara otomatis
 
-### Metode 1: Menggunakan Skrip Installer (Direkomendasikan)
+### Metode 1: Menggunakan Skrip Installer
 
-1. Unggah `revd_installer.sh` ke perangkat OpenWRT Anda (dalam direktori yang sama dengan bot Anda)
+1. Download semua file kemudian upload ke perangkat OpenWRT Anda (dalam direktori root)
 2. Jadikan executable:
    ```
    chmod +x revd_installer.sh
@@ -41,7 +41,7 @@ Installer akan:
 
 ## Mendapatkan Kredensial Telegram
 
-Untuk menggunakan bot, Anda memerlukan beberapa kredensial dari Telegram:
+Untuk menggunakan bot, memerlukan beberapa kredensial dari Telegram:
 
 ### 1. Mendapatkan Bot Token dari BotFather
 
@@ -81,7 +81,7 @@ Setelah diinstal, Anda dapat mengelola layanan bot dengan perintah ini:
 - **Periksa status**: `service revd status`
 - **Lihat log**: `logread | grep revd`
 
-## Pemecahan Masalah
+## Jika Terjadi Masalah
 
 Jika bot tidak mulai secara otomatis setelah reboot:
 
@@ -105,7 +105,7 @@ Jika bot tidak mulai secara otomatis setelah reboot:
 
 4. Periksa kesalahan skrip secara manual:
    ```
-   cd /root/revd
+   cd /root/REVDBOT
    python3 bot_openwrt.py
    ```
 
@@ -114,7 +114,7 @@ Jika bot tidak mulai secara otomatis setelah reboot:
 Ingat bahwa kredensial API Telegram dan token bot Anda disimpan dalam file `config.ini`. Pastikan untuk melindungi file ini dengan izin yang sesuai:
 
 ```
-chmod 600 /root/revd/config.ini
+chmod 600 /root/REVDBOT/config.ini
 ```
 
 ## Menghapus Bot (Uninstall)
