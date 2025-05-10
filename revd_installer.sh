@@ -54,6 +54,10 @@ if ! command -v python3 >/dev/null 2>&1; then
     opkg install python3 python3-pip
 fi
 
+# Install Python packages
+echo "Menginstal paket Python yang diperlukan..."
+pip3 install telethon configparser asyncio paramiko speedtest-cli
+
 # Clone the repository
 echo "📥 Mengkloning repository dari GitHub..."
 if [ -d "$ROOT_DIR/.git" ]; then
@@ -72,10 +76,6 @@ else
         exit 1
     fi
 fi
-
-# Install Python dependencies
-echo "📦 Menginstal dependensi Python..."
-pip3 install telethon configparser asyncio
 
 # Make sure the plugins directory exists
 if [ ! -d "$PLUGINS_DIR" ]; then
@@ -100,39 +100,77 @@ else
     exit 1
 fi
 
-# Download the init script to /etc/init.d
-echo "📄 Membuat script init 'revd'..."
-cat > "$INIT_SCRIPT" << EOF
+# Modify the init script if it exists
+if [ -f "$INIT_SCRIPT" ]; then
+    echo "📄 Memperbarui script init 'revd' dengan path yang benar..."
+    # Update the script path in the init script
+    sed -i "s|SCRIPT_PATH=.*|SCRIPT_PATH=$ROOT_DIR/bot_openwrt.py|g" "$INIT_SCRIPT"
+    # Check if LOG_FILE line exists, update if yes, add if no
+    if grep -q "LOG_FILE=" "$INIT_SCRIPT"; then
+        sed -i "s|LOG_FILE=.*|LOG_FILE=/var/log/revd_bot.log|g" "$INIT_SCRIPT"
+    else
+        sed -i "/PROG=.*/a LOG_FILE=/var/log/revd_bot.log" "$INIT_SCRIPT"
+    fi
+    # Update plugins directory references
+    sed -i "s|/root/revd/plugins|$PLUGINS_DIR|g" "$INIT_SCRIPT"
+    chmod +x "$INIT_SCRIPT"
+    echo "✅ Script init berhasil diperbarui"
+else
+    # Create the init script if it doesn't exist
+    echo "📄 Membuat script init 'revd'..."
+    cat > "$INIT_SCRIPT" << EOF
 #!/bin/sh /etc/rc.common
 
 START=99
 USE_PROCD=1
 PROG=/usr/bin/python3
 SCRIPT_PATH=$ROOT_DIR/bot_openwrt.py
+LOG_FILE=/var/log/revd_bot.log
 
 start_service() {
     # Check if script exists
     if [ ! -f "\$SCRIPT_PATH" ]; then
         echo "Skrip bot tidak ditemukan di \$SCRIPT_PATH"
+        logger -t revd "Skrip bot tidak ditemukan di \$SCRIPT_PATH"
         return 1
     fi
     
     # Check if Python3 is installed
     if [ ! -x "\$PROG" ]; then
         echo "Python3 tidak ditemukan di \$PROG"
+        logger -t revd "Python3 tidak ditemukan di \$PROG"
         return 1
     fi
+
+    # Make sure plugins directory exists and has correct permissions
+    if [ ! -d "$PLUGINS_DIR" ]; then
+        mkdir -p $PLUGINS_DIR
+        chmod 755 $PLUGINS_DIR
+        logger -t revd "Membuat direktori plugins"
+    fi
+
+    # Check for plugin scripts and copy from backup if missing
+    for script in speedtest.sh reboot.sh ping.sh clear_ram.sh vnstat.sh system.sh; do
+        if [ ! -f "$PLUGINS_DIR/\$script" ] && [ -f "/etc/revd_backup/\$script" ]; then
+            cp "/etc/revd_backup/\$script" "$PLUGINS_DIR/\$script"
+            chmod +x "$PLUGINS_DIR/\$script"
+            logger -t revd "Memulihkan skrip \$script dari backup"
+        fi
+    done
     
     # Log starting message
     logger -t revd "Memulai layanan Telegram Bot"
     
-    # Configure the service
+    # Configure the service with logging
     procd_open_instance
     procd_set_param command \$PROG \$SCRIPT_PATH
     procd_set_param stderr 1
     procd_set_param stdout 1
     procd_set_param respawn \${respawn_threshold:-3600} \${respawn_timeout:-5} \${respawn_retry:-5}
     procd_close_instance
+    
+    # Create a log entry for successful start
+    echo "\$(date): Service started" >> \$LOG_FILE
 }
 
 stop_service() {
@@ -140,17 +178,52 @@ stop_service() {
     logger -t revd "Menghentikan layanan Telegram Bot"
     
     # Find and kill all Python processes running the bot script
-    kill -9 \$(ps | grep "\$SCRIPT_PATH" | grep -v grep | awk '{print \$1}') 2>/dev/null
+    PIDS=\$(ps | grep "\$SCRIPT_PATH" | grep -v grep | awk '{print \$1}')
+    if [ -n "\$PIDS" ]; then
+        kill -9 \$PIDS 2>/dev/null
+        logger -t revd "Bot dihentikan, PID: \$PIDS"
+    else
+        logger -t revd "Tidak ada proses bot yang berjalan"
+    fi
+    
+    # Create a log entry for stop
+    echo "\$(date): Service stopped" >> \$LOG_FILE
 }
 
 reload_service() {
+    logger -t revd "Memuat ulang layanan Telegram Bot"
     stop
+    sleep 2
+    start
+}
+
+restart() {
+    logger -t revd "Memulai ulang layanan Telegram Bot"
+    stop
+    sleep 3
     start
 }
 EOF
 
-# Make init script executable
-chmod +x "$INIT_SCRIPT"
+    # Make init script executable
+    chmod +x "$INIT_SCRIPT"
+    echo "✅ Script init berhasil dibuat"
+fi
+
+# Create backup directory for plugin scripts
+echo "📁 Membuat direktori backup untuk script plugins..."
+if [ ! -d "/etc/revd_backup" ]; then
+    mkdir -p "/etc/revd_backup"
+fi
+
+# Copy plugin scripts to backup directory
+echo "💾 Menyalin script plugins ke direktori backup..."
+for script in speedtest.sh reboot.sh ping.sh clear_ram.sh vnstat.sh system.sh; do
+    if [ -f "$PLUGINS_DIR/$script" ]; then
+        cp "$PLUGINS_DIR/$script" "/etc/revd_backup/$script"
+        chmod +x "/etc/revd_backup/$script"
+    fi
+done
 
 # Get API credentials from user
 echo "📝 Masukkan kredensial API Telegram dan informasi admin:"
