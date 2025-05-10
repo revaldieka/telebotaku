@@ -117,6 +117,41 @@ Ingat bahwa kredensial API Telegram dan token bot Anda disimpan dalam file `conf
 chmod 600 /root/revd/config.ini
 ```
 
+## Menghapus Bot (Uninstall)
+
+Jika Anda ingin menghapus bot dari sistem, gunakan skrip uninstaller berikut:
+
+### Metode 1: Menggunakan Skrip Uninstaller
+
+1. Unduh skrip uninstaller:
+   ```
+   cd /tmp && curl -sLko uninstall.sh https://raw.githubusercontent.com/revaldieka/telebotaku/main/uninstall.sh
+   ```
+
+2. Berikan izin eksekusi dan jalankan:
+   ```
+   chmod +x uninstall.sh
+   ./uninstall.sh
+   ```
+
+3. Ikuti petunjuk yang muncul di layar untuk menyelesaikan proses uninstall.
+
+### Metode 2: One-Line Uninstaller
+
+Salin dan tempel perintah berikut di terminal OpenWRT Anda:
+
+```
+cd /tmp && curl -sLko uninstall.sh https://raw.githubusercontent.com/revaldieka/telebotaku/main/uninstall.sh && chmod +x uninstall.sh && sh uninstall.sh
+```
+
+Skrip uninstaller akan:
+- Menghentikan layanan bot jika sedang berjalan
+- Menonaktifkan layanan bot dari startup
+- Menghapus skrip layanan sistem
+- Memberi opsi untuk menyimpan backup konfigurasi
+- Menghapus semua file bot
+- Memberi pilihan untuk menghapus dependensi Python
+
 ## Kredit
 
 By: REVD.CLOUD
