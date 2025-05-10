@@ -1,10 +1,8 @@
 #!/bin/sh
 
 #
-# Enhanced system monitor for HG680P with additional network info
-#
-
-# Function to format uptime nicely (borrowed from for info system.txt)
+# system monitor for OpenWRT
+# REVD.CLOUD
 uptime_str() { # <Time in Seconds>
     local Uptime=$1
     if [ $Uptime -gt 0 ]; then
