@@ -81,7 +81,6 @@ class OpenWRTBot:
         self.client = None
         self.admin_id = self.config['admin_id']
         self.script_dir = Path(__file__).parent / "plugins"  # Use plugins directory
-        self.user_last_msg = {}  # To track user's last message IDs
         
         # Ensure plugins directory exists
         if not self.script_dir.exists():
@@ -96,7 +95,8 @@ class OpenWRTBot:
             "clear_ram.sh", 
             "vnstat.sh", 
             "system.sh",
-            "userlist.sh"  # Added userlist.sh to required scripts
+            "userlist.sh",
+            "update.sh"  # Added update.sh to required scripts
         ]
         
     async def init_client(self):
@@ -127,28 +127,19 @@ class OpenWRTBot:
             [Button.text("📊 System Info", resize=True), Button.text("🔄 Reboot", resize=True)],
             [Button.text("🧹 Clear RAM", resize=True), Button.text("🌐 Network Stats", resize=True)],
             [Button.text("🚀 Speed Test", resize=True), Button.text("📡 Ping Test", resize=True)],
-            [Button.text("👥 User List", resize=True)]  # Added User List button
+            [Button.text("👥 User List", resize=True), Button.text("⬆️ Update Bot", resize=True)]  # Added Update Bot button
         ]
     
-    async def send_message_and_delete_previous(self, event, text, buttons=None, add_keyboard=True):
+    async def send_message(self, event, text, buttons=None, add_keyboard=True):
         """
-        Send a new message and delete the previous one if exists.
-        Also update the user's last message ID.
+        Send a new message without deleting previous ones.
         If add_keyboard is True and no buttons provided, adds the main keyboard.
         """
-        user_id = event.sender_id
         chat_id = event.chat_id
         
         # Add main keyboard if no buttons provided and add_keyboard is True
         if buttons is None and add_keyboard:
             buttons = self.get_main_keyboard()
-        
-        # First, try to delete the previous message if exists
-        if user_id in self.user_last_msg and self.user_last_msg[user_id]:
-            try:
-                await self.client.delete_messages(chat_id, self.user_last_msg[user_id])
-            except Exception as e:
-                logger.error(f"Failed to delete previous message: {str(e)}")
         
         # Send new message with markdown formatting
         try:
@@ -158,8 +149,6 @@ class OpenWRTBot:
                 buttons=buttons,
                 parse_mode='md'  # Use markdown
             )
-            # Update last message ID
-            self.user_last_msg[user_id] = new_msg.id
             return new_msg
         except Exception as e:
             logger.error(f"Error sending message: {str(e)}")
@@ -170,7 +159,6 @@ class OpenWRTBot:
                     text, 
                     buttons=buttons
                 )
-                self.user_last_msg[user_id] = new_msg.id
                 return new_msg
             except Exception as e:
                 logger.error(f"Error sending plain message: {str(e)}")
@@ -294,6 +282,14 @@ class OpenWRTBot:
             logger.error(f"User list failed: {str(e)}")
             return f"❌ Failed to get user list: {str(e)}"
     
+    def update_bot(self) -> str:
+        """Update bot from GitHub repository."""
+        try:
+            return self.run_script("update.sh")
+        except Exception as e:
+            logger.error(f"Update failed: {str(e)}")
+            return f"❌ Update failed: {str(e)}"
+    
     def verify_scripts(self) -> bool:
         """Verify that all required scripts are in the plugins directory."""
         missing_scripts = []
@@ -311,7 +307,7 @@ class OpenWRTBot:
         @self.client.on(events.NewMessage(pattern='/start'))
         async def start_handler(event):
             """Handle /start command."""
-            await self.send_message_and_delete_previous(
+            await self.send_message(
                 event,
                 f"🤖 *Welcome to {self.config['device_name']} Bot!*\n\n"
                 f"Select an option or use one of these commands:\n"
@@ -322,13 +318,14 @@ class OpenWRTBot:
                 f"`/speedtest` - Run a speed test\n"
                 f"`/ping [target]` - Ping a target (default: google.com)\n"
                 f"`/userlist` - List connected users\n"
+                f"`/update` - Update bot from GitHub\n"
                 f"`/help` - Show this help message"
             )
         
         @self.client.on(events.NewMessage(pattern='/help'))
         async def help_handler(event):
             """Handle /help command."""
-            await self.send_message_and_delete_previous(
+            await self.send_message(
                 event,
                 f"🤖 *{self.config['device_name']} Bot Commands:*\n\n"
                 f"`/system` - Get system information\n"
@@ -338,15 +335,16 @@ class OpenWRTBot:
                 f"`/speedtest` - Run a speed test\n"
                 f"`/ping [target]` - Ping a target (default: google.com)\n"
                 f"`/userlist` - List connected users\n"
+                f"`/update` - Update bot from GitHub\n"
                 f"`/help` - Show this help message"
             )
         
         @self.client.on(events.NewMessage(pattern='/system'))
         async def system_handler(event):
             """Handle /system command."""
-            await self.send_message_and_delete_previous(event, "🔍 *Getting system information...*", add_keyboard=False)
+            await self.send_message(event, "🔍 *Getting system information...*", add_keyboard=False)
             result = self.get_overview()
-            await self.send_message_and_delete_previous(event, f"```\n{result}\n```")
+            await self.send_message(event, f"```\n{result}\n```")
         
         @self.client.on(events.NewMessage(pattern='/reboot'))
         async def reboot_handler(event):
@@ -357,7 +355,7 @@ class OpenWRTBot:
                  Button.inline("❌ No", b"reboot_no")]
             ]
             
-            await self.send_message_and_delete_previous(
+            await self.send_message(
                 event, 
                 "⚠️ *Are you sure you want to reboot the device?*\n\n"
                 "This will disconnect the device for 1-2 minutes.",
@@ -371,35 +369,77 @@ class OpenWRTBot:
             user_id = event.sender_id
             # Log who initiated the reboot
             logger.info(f"User {user_id} confirmed reboot")
-            await self.send_message_and_delete_previous(event, "🔄 *Rebooting the device...*", add_keyboard=False)
+            await self.send_message(event, "🔄 *Rebooting the device...*", add_keyboard=False)
             result = self.reboot_device()
-            await self.send_message_and_delete_previous(event, f"```\n{result}\n```")
+            await self.send_message(event, f"```\n{result}\n```")
         
         @self.client.on(events.CallbackQuery(pattern=r"reboot_no"))
         async def reboot_no_handler(event):
             """Handle reboot cancellation."""
-            await self.send_message_and_delete_previous(event, "✅ *Reboot cancelled*")
+            await self.send_message(event, "✅ *Reboot cancelled*")
+
+        @self.client.on(events.NewMessage(pattern='/update'))
+        async def update_handler(event):
+            """Handle /update command."""
+            # Only allow admin to update
+            if not self.is_admin(event.sender_id):
+                await self.send_message(event, "⛔ *Only admin can update the bot*")
+                return
+                
+            # Create confirmation buttons
+            confirm_buttons = [
+                [Button.inline("✅ Yes", b"update_yes"), 
+                 Button.inline("❌ No", b"update_no")]
+            ]
+            
+            await self.send_message(
+                event, 
+                "⚠️ *Are you sure you want to update the bot?*\n\n"
+                "This will download the latest version from GitHub.",
+                buttons=confirm_buttons,
+                add_keyboard=False
+            )
+
+        @self.client.on(events.CallbackQuery(pattern=r"update_yes"))
+        async def update_yes_handler(event):
+            """Handle update confirmation."""
+            user_id = event.sender_id
+            # Only allow admin to update
+            if not self.is_admin(user_id):
+                await self.send_message(event, "⛔ *Only admin can update the bot*")
+                return
+                
+            # Log who initiated the update
+            logger.info(f"User {user_id} confirmed update")
+            await self.send_message(event, "🔄 *Updating the bot...*", add_keyboard=False)
+            result = self.update_bot()
+            await self.send_message(event, f"```\n{result}\n```")
+
+        @self.client.on(events.CallbackQuery(pattern=r"update_no"))
+        async def update_no_handler(event):
+            """Handle update cancellation."""
+            await self.send_message(event, "✅ *Update cancelled*")
         
         @self.client.on(events.NewMessage(pattern='/clearram'))
         async def clearram_handler(event):
             """Handle /clearram command."""
-            await self.send_message_and_delete_previous(event, "🧹 *Clearing RAM cache...*", add_keyboard=False)
+            await self.send_message(event, "🧹 *Clearing RAM cache...*", add_keyboard=False)
             result = self.clear_ram()
-            await self.send_message_and_delete_previous(event, f"```\n{result}\n```")
+            await self.send_message(event, f"```\n{result}\n```")
         
         @self.client.on(events.NewMessage(pattern='/network'))
         async def network_handler(event):
             """Handle /network command."""
-            await self.send_message_and_delete_previous(event, "📊 *Getting network statistics...*", add_keyboard=False)
+            await self.send_message(event, "📊 *Getting network statistics...*", add_keyboard=False)
             result = self.get_network_stats()
-            await self.send_message_and_delete_previous(event, f"```\n{result}\n```")
+            await self.send_message(event, f"```\n{result}\n```")
         
         @self.client.on(events.NewMessage(pattern='/speedtest'))
         async def speedtest_handler(event):
             """Handle /speedtest command."""
-            await self.send_message_and_delete_previous(event, "🚀 *Running speed test (this may take a minute)...*", add_keyboard=False)
+            await self.send_message(event, "🚀 *Running speed test (this may take a minute)...*", add_keyboard=False)
             result = self.run_speedtest()
-            await self.send_message_and_delete_previous(event, f"```\n{result}\n```")
+            await self.send_message(event, f"```\n{result}\n```")
         
         @self.client.on(events.NewMessage(pattern='/ping'))
         async def ping_handler(event):
@@ -409,20 +449,20 @@ class OpenWRTBot:
             target = None
             if len(command_parts) > 1:
                 target = command_parts[1]
-                await self.send_message_and_delete_previous(event, f"📡 *Running ping test to {target}...*", add_keyboard=False)
+                await self.send_message(event, f"📡 *Running ping test to {target}...*", add_keyboard=False)
             else:
                 # Just show a generic message, not mentioning default target
-                await self.send_message_and_delete_previous(event, f"📡 *Running ping test...*", add_keyboard=False)
+                await self.send_message(event, f"📡 *Running ping test...*", add_keyboard=False)
             
             result = self.run_ping(target)
-            await self.send_message_and_delete_previous(event, f"```\n{result}\n```")
+            await self.send_message(event, f"```\n{result}\n```")
 
         @self.client.on(events.NewMessage(pattern='/userlist'))
         async def userlist_handler(event):
             """Handle /userlist command."""
-            await self.send_message_and_delete_previous(event, "👥 *Getting user list...*", add_keyboard=False)
+            await self.send_message(event, "👥 *Getting user list...*", add_keyboard=False)
             result = self.get_user_list()
-            await self.send_message_and_delete_previous(event, f"```\n{result}\n```")
+            await self.send_message(event, f"```\n{result}\n```")
         
         # Handle button clicks
         @self.client.on(events.NewMessage())
@@ -435,83 +475,84 @@ class OpenWRTBot:
             
             # Process button presses based on text
             if text == "📊 System Info":
-                await self.send_message_and_delete_previous(event, "🔍 *Getting system information...*", add_keyboard=False)
+                await self.send_message(event, "🔍 *Getting system information...*", add_keyboard=False)
                 result = self.get_overview()
-                await self.send_message_and_delete_previous(event, f"```\n{result}\n```")
+                await self.send_message(event, f"```\n{result}\n```")
             elif text == "🔄 Reboot":
                 await reboot_handler(event)
             elif text == "🧹 Clear RAM":
-                await self.send_message_and_delete_previous(event, "🧹 *Clearing RAM cache...*", add_keyboard=False)
+                await self.send_message(event, "🧹 *Clearing RAM cache...*", add_keyboard=False)
                 result = self.clear_ram()
-                await self.send_message_and_delete_previous(event, f"```\n{result}\n```")
+                await self.send_message(event, f"```\n{result}\n```")
             elif text == "🌐 Network Stats":
-                await self.send_message_and_delete_previous(event, "📊 *Getting network statistics...*", add_keyboard=False)
+                await self.send_message(event, "📊 *Getting network statistics...*", add_keyboard=False)
                 result = self.get_network_stats()
-                await self.send_message_and_delete_previous(event, f"```\n{result}\n```")
+                await self.send_message(event, f"```\n{result}\n```")
             elif text == "🚀 Speed Test":
-                await self.send_message_and_delete_previous(event, "🚀 *Running speed test (this may take a minute)...*", add_keyboard=False)
+                await self.send_message(event, "🚀 *Running speed test (this may take a minute)...*", add_keyboard=False)
                 result = self.run_speedtest()
-                await self.send_message_and_delete_previous(event, f"```\n{result}\n```")
+                await self.send_message(event, f"```\n{result}\n```")
             elif text == "📡 Ping Test":
-                # For button click, use default target without mentioning what it is
-                await self.send_message_and_delete_previous(event, "📡 *Running ping test...*", add_keyboard=False)
+                await self.send_message(event, "📡 *Running ping test...*", add_keyboard=False)
                 result = self.run_ping()
-                if result:
-                    await self.send_message_and_delete_previous(event, f"```\n{result}\n```")
-                else:
-                    await self.send_message_and_delete_previous(event, "*Error: Ping test failed. Please try again.*")
+                await self.send_message(event, f"```\n{result}\n```")
             elif text == "👥 User List":
-                await self.send_message_and_delete_previous(event, "👥 *Getting user list...*", add_keyboard=False)
+                await self.send_message(event, "👥 *Getting user list...*", add_keyboard=False)
                 result = self.get_user_list()
-                await self.send_message_and_delete_previous(event, f"```\n{result}\n```")
-    
-    async def run(self):
-        """Run the bot."""
-        # Verify scripts
-        if not self.verify_scripts():
-            logger.error("Missing required scripts. Please check the plugins directory.")
-            print("Error: Missing required scripts. Please check the plugins directory.")
-            return False
+                await self.send_message(event, f"```\n{result}\n```")
+            elif text == "⬆️ Update Bot":
+                # Only allow admin to update
+                if not self.is_admin(event.sender_id):
+                    await self.send_message(event, "⛔ *Only admin can update the bot*")
+                    return
+                await update_handler(event)
         
-        # Initialize and start the client
-        await self.init_client()
-        
-        print(f"🤖 {self.config['device_name']} bot is running...")
-        logger.info(f"{self.config['device_name']} bot started")
-        
-        try:
-            # Keep the bot running
-            await self.client.run_until_disconnected()
-        except Exception as e:
-            logger.error(f"Bot runtime error: {str(e)}")
-            # Close the client connection if there was an error
-            if self.client and self.client.is_connected():
-                await self.client.disconnect()
-        
-        return True
+        # Admin verification
+        @self.client.on(events.NewMessage())
+        async def admin_check_handler(event):
+            """Verify if the user is an admin."""
+            # Skip messages from the bot itself
+            if event.sender_id == self.client.user_id:
+                return
+                
+            # If message is from non-admin, check if it's a command
+            if not self.is_admin(event.sender_id):
+                # Check if the message is a command that requires admin access
+                if event.message.message.startswith('/update') or event.message.message == "⬆️ Update Bot":
+                    await self.send_message(event, "⛔ *Only admin can access this command*")
+                    return
+                    
+                # For all other commands, allow access for any user
 
 async def main():
-    """Main function to run the bot."""
+    """Main entry point for the bot."""
     try:
-        # Create plugins directory if it doesn't exist
-        plugins_dir = Path(__file__).parent / "plugins"
-        if not plugins_dir.exists():
-            plugins_dir.mkdir(parents=True)
-            logger.info(f"Created plugins directory at {plugins_dir}")
-        
-        # Create and run the bot
+        # Create the bot instance
         bot = OpenWRTBot(CONFIG)
-        await bot.run()
+        
+        # Verify all required scripts are present
+        if not bot.verify_scripts():
+            logger.warning("Some required scripts are missing. Bot functionality will be limited.")
+        
+        # Initialize the client
+        await bot.init_client()
+        
+        logger.info(f"Bot started for {CONFIG['device_name']}")
+        
+        # Keep the bot running
+        await bot.client.run_until_disconnected()
+    except Exception as e:
+        logger.error(f"Bot crashed: {str(e)}")
+        raise
+
+if __name__ == "__main__":
+    # Run the bot
+    loop = asyncio.get_event_loop()
+    try:
+        loop.run_until_complete(main())
     except KeyboardInterrupt:
         logger.info("Bot stopped by user")
     except Exception as e:
-        logger.error(f"Bot error: {str(e)}")
-        print(f"Error: {str(e)}")
-
-if __name__ == "__main__":
-    # Use asyncio.run() which creates a new event loop and closes it at the end
-    try:
-        asyncio.run(main())
-    except Exception as e:
-        logger.error(f"Main exception: {str(e)}")
-        print(f"Fatal error: {str(e)}")
+        logger.error(f"Fatal error: {str(e)}")
+    finally:
+        loop.close()
