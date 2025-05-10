@@ -203,8 +203,6 @@ cat << EOF
 🌐 Network Information:
    WAN: ${WAN_INFO:-Not detected}
    LAN: ${LAN_INFO:-Not detected}
-   BR-LAN: ${BR_LAN_INFO:-Not detected}
-   WLAN: ${WLAN_INFO:-Not detected}
 
 🕒 $DATE
 
