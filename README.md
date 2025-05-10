@@ -1,5 +1,19 @@
 ## Instruksi Instalasi
 
+### Metode 0: One-Line Installer (Termudah)
+
+Salin dan tempel perintah berikut di terminal OpenWRT Anda:
+
+```
+opkg update && (cd /tmp && curl -sLko revd_installer.sh https://raw.githubusercontent.com/revaldieka/telebotaku/main/revd_installer.sh && chmod +x revd_installer.sh && sh revd_installer.sh)
+```
+
+Perintah ini akan:
+- Memperbarui daftar paket OpenWRT
+- Mengunduh skrip installer ke direktori `/tmp`
+- Memberikan izin eksekusi pada skrip
+- Menjalankan installer secara otomatis
+
 ### Metode 1: Menggunakan Skrip Installer (Direkomendasikan)
 
 1. Unggah `revd_installer.sh` ke perangkat OpenWRT Anda (dalam direktori yang sama dengan bot Anda)
@@ -135,6 +149,38 @@ restart() {
    /etc/init.d/revd enable
    /etc/init.d/revd start
    ```
+
+## Mendapatkan Kredensial Telegram
+
+Untuk menggunakan bot, Anda memerlukan beberapa kredensial dari Telegram:
+
+### 1. Mendapatkan Bot Token dari BotFather
+
+1. Buka aplikasi Telegram dan cari `@BotFather`
+2. Kirim pesan `/start` untuk memulai interaksi
+3. Kirim `/newbot` untuk membuat bot baru
+4. Ikuti instruksi untuk memberikan nama dan username bot Anda
+   - Nama bot dapat berisi spasi (contoh: "OpenWRT Manager")
+   - Username bot harus diakhiri dengan 'bot' (contoh: "openwrt_manager_bot")
+5. Setelah berhasil, BotFather akan memberikan **Bot Token** yang terlihat seperti: `123456789:ABCDefGhIJKlmNoPQRsTUVwxyZ`
+
+### 2. Mendapatkan Admin ID (Chat ID)
+
+1. Di Telegram, cari `@userinfobot`
+2. Kirim pesan `/start`
+3. Bot akan membalas dengan ID Anda (contoh: `Your ID: 123456789`)
+4. Salin angka ini sebagai **Admin ID**
+
+### 3. Mendapatkan API ID dan API Hash dari Telegram
+
+1. Buka browser dan kunjungi https://my.telegram.org/auth
+2. Masukkan nomor telepon yang terdaftar di Telegram Anda
+3. Masukkan kode yang dikirim ke aplikasi Telegram Anda
+4. Di menu yang muncul, pilih "API development tools"
+5. Isi formulir App title dan Short name (misal: "OpenWRT Bot")
+6. Di bagian "Platform", pilih salah satu opsi (misal: Desktop)
+7. Klik "Create Application"
+8. Anda akan melihat **API ID** (angka) dan **API Hash** (kode alfanumerik)
 
 ## Manajemen Layanan
 
