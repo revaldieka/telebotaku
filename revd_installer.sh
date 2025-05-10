@@ -45,13 +45,13 @@ opkg install git python3 python3-pip
 # Install git if not already installed
 if ! command -v git >/dev/null 2>&1; then
     echo "Menginstal git..."
-    opkg install git
+    opkg install git git-http
 fi
 
 # Install python3 if not already installed
 if ! command -v python3 >/dev/null 2>&1; then
     echo "Menginstal Python3..."
-    opkg install python3 python3-pip
+    opkg install python3 python3-pip 
 fi
 
 # Install Python packages
