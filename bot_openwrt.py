@@ -95,7 +95,8 @@ class OpenWRTBot:
             "ping.sh", 
             "clear_ram.sh", 
             "vnstat.sh", 
-            "system.sh"
+            "system.sh",
+            "userlist.sh"  # Added userlist.sh to required scripts
         ]
         
     async def init_client(self):
@@ -125,7 +126,8 @@ class OpenWRTBot:
         return [
             [Button.text("📊 System Info", resize=True), Button.text("🔄 Reboot", resize=True)],
             [Button.text("🧹 Clear RAM", resize=True), Button.text("🌐 Network Stats", resize=True)],
-            [Button.text("🚀 Speed Test", resize=True), Button.text("📡 Ping Test", resize=True)]
+            [Button.text("🚀 Speed Test", resize=True), Button.text("📡 Ping Test", resize=True)],
+            [Button.text("👥 User List", resize=True)]  # Added User List button
         ]
     
     async def send_message_and_delete_previous(self, event, text, buttons=None, add_keyboard=True):
@@ -284,6 +286,14 @@ class OpenWRTBot:
             logger.error(f"Network stats failed: {str(e)}")
             return f"❌ Failed to get network statistics: {str(e)}"
     
+    def get_user_list(self) -> str:
+        """Get list of connected users."""
+        try:
+            return self.run_script("userlist.sh")
+        except Exception as e:
+            logger.error(f"User list failed: {str(e)}")
+            return f"❌ Failed to get user list: {str(e)}"
+    
     def verify_scripts(self) -> bool:
         """Verify that all required scripts are in the plugins directory."""
         missing_scripts = []
@@ -311,6 +321,7 @@ class OpenWRTBot:
                 f"`/network` - Get network statistics\n"
                 f"`/speedtest` - Run a speed test\n"
                 f"`/ping [target]` - Ping a target (default: google.com)\n"
+                f"`/userlist` - List connected users\n"
                 f"`/help` - Show this help message"
             )
         
@@ -326,6 +337,7 @@ class OpenWRTBot:
                 f"`/network` - Get network statistics\n"
                 f"`/speedtest` - Run a speed test\n"
                 f"`/ping [target]` - Ping a target (default: google.com)\n"
+                f"`/userlist` - List connected users\n"
                 f"`/help` - Show this help message"
             )
         
@@ -404,6 +416,13 @@ class OpenWRTBot:
             
             result = self.run_ping(target)
             await self.send_message_and_delete_previous(event, f"```\n{result}\n```")
+
+        @self.client.on(events.NewMessage(pattern='/userlist'))
+        async def userlist_handler(event):
+            """Handle /userlist command."""
+            await self.send_message_and_delete_previous(event, "👥 *Getting user list...*", add_keyboard=False)
+            result = self.get_user_list()
+            await self.send_message_and_delete_previous(event, f"```\n{result}\n```")
         
         # Handle button clicks
         @self.client.on(events.NewMessage())
@@ -441,6 +460,10 @@ class OpenWRTBot:
                     await self.send_message_and_delete_previous(event, f"```\n{result}\n```")
                 else:
                     await self.send_message_and_delete_previous(event, "*Error: Ping test failed. Please try again.*")
+            elif text == "👥 User List":
+                await self.send_message_and_delete_previous(event, "👥 *Getting user list...*", add_keyboard=False)
+                result = self.get_user_list()
+                await self.send_message_and_delete_previous(event, f"```\n{result}\n```")
     
     async def run(self):
         """Run the bot."""
