@@ -40,7 +40,7 @@ opkg update
 
 # Install required packages
 echo "Menginstal paket pendukung..."
-opkg install git python3 python3-pip
+opkg install git python3 python3-pip git-http
 
 # Install git if not already installed
 if ! command -v git >/dev/null 2>&1; then
@@ -51,7 +51,7 @@ fi
 # Install python3 if not already installed
 if ! command -v python3 >/dev/null 2>&1; then
     echo "Menginstal Python3..."
-    opkg install python3 python3-pip 
+    opkg install python3 python3-pip
 fi
 
 # Install Python packages
@@ -326,9 +326,5 @@ fi
 
 # Show final instructions
 echo ""
-echo "📱 Cara menggunakan bot:"
-echo "1. Buka Telegram dan cari bot Anda"
-echo "2. Kirim perintah /start untuk memulai"
-echo "3. Gunakan menu dan tombol yang tersedia"
-echo ""
 echo "✅ Instalasi selesai!"
+echo "Tinggal /strart bot telegram nya cik"
