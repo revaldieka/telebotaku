@@ -40,7 +40,7 @@ opkg update
 
 # Install required packages
 echo "Menginstal paket pendukung..."
-opkg install git python3 python3-pip openssh-sftp-server vnstat
+opkg install git python3 python3-pip
 
 # Install git if not already installed
 if ! command -v git >/dev/null 2>&1; then
