@@ -43,26 +43,28 @@ get_hostname() {
 
 # Print header
 print_header() {
-    echo ""
     echo "✦✦✦✦✦ CONNECTED USERS ✦✦✦✦✦"
-    echo ""
-    # Count connected devices
+    # Count connected devices from DHCP leases only
     local dhcp_count=0
-    local arp_count=0
     if [ -f "/tmp/dhcp.leases" ]; then
         dhcp_count=$(wc -l < /tmp/dhcp.leases)
     fi
-    arp_count=$(ip neigh show | grep -v FAILED | wc -l)
-    echo "📊 Total Devices: $(($dhcp_count + $arp_count))"
-    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "📊 Total Devices: $dhcp_count"
 }
 
 # Get DHCP leases
 process_dhcp_leases() {
     if [ -f "/tmp/dhcp.leases" ]; then
+        # Counter for devices
+        local count=0
+        local current_time=$(date +%s)
+        
         while IFS=' ' read -r lease_time mac ip hostname _; do
             # Skip empty hostnames or MAC addresses
             [ -z "$mac" ] || [ "$mac" = "*" ] && continue
+            
+            count=$((count+1))
             
             # Get device icon
             icon=$(get_device_icon $mac)
@@ -74,76 +76,44 @@ process_dhcp_leases() {
             fi
             
             # Truncate hostname if too long
-            if [ ${#hostname} -gt 15 ]; then
-                hostname="${hostname:0:15}..."
+            if [ ${#hostname} -gt 20 ]; then
+                hostname="${hostname:0:20}..."
             fi
             
-            # Short mac format
-            short_mac=$(echo $mac | cut -d':' -f4-6)
+            # Calculate lease time remaining
+            lease_remaining=$((lease_time - current_time))
+            if [ $lease_remaining -le 0 ]; then
+                lease_remaining_str="Expired"
+            else
+                # Convert to hours and minutes
+                hours=$((lease_remaining / 3600))
+                minutes=$(((lease_remaining % 3600) / 60))
+                lease_remaining_str="${hours}h ${minutes}m"
+            fi
             
-            # Print in a more compact format
-            printf "%s %s (%s)\n" "$icon" "$ip" "$hostname"
+            # Print each device in a simple list format
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "Perangkat $count $icon"
+            echo "IP: $ip"
+            echo "Hostname: $hostname"
+            echo "MAC: $mac"
+            echo "Lease Time: $lease_remaining_str"
+            echo ""
         done < /tmp/dhcp.leases
+    else
+        echo "No DHCP leases found."
     fi
-}
-
-# Get additional connected devices from ARP table that might not be in DHCP leases
-process_arp_table() {
-    # Create a temporary file with the IPs from DHCP leases to avoid duplicates
-    touch /tmp/user_sh_dhcp_ips
-    if [ -f "/tmp/dhcp.leases" ]; then
-        awk '{print $3}' /tmp/dhcp.leases > /tmp/user_sh_dhcp_ips
-    fi
-    
-    # Parse ARP table
-    ip neigh show | grep -v FAILED | while read -r ip _ _ mac _ _; do
-        # Skip IP addresses already listed in DHCP leases
-        grep -q "^$ip$" /tmp/user_sh_dhcp_ips && continue
-        
-        # Get hostname
-        hostname=$(get_hostname $ip)
-        [ -z "$hostname" ] && hostname="unknown"
-        
-        # Truncate hostname if too long
-        if [ ${#hostname} -gt 15 ]; then
-            hostname="${hostname:0:15}..."
-        fi
-        
-        # Get device icon
-        icon=$(get_device_icon $mac)
-        
-        # Short mac format
-        short_mac=$(echo $mac | cut -d':' -f4-6)
-        
-        # Print in a more compact format
-        printf "%s %s (%s)\n" "$icon" "$ip" "$hostname"
-    done
-    
-    # Clean up temporary file
-    rm -f /tmp/user_sh_dhcp_ips
-}
-
-# Count online devices
-count_online_devices() {
-    local count=0
-    if [ -f "/tmp/dhcp.leases" ]; then
-        count=$(wc -l < /tmp/dhcp.leases)
-    fi
-    echo $count
 }
 
 # Main function
 main() {
     print_header
     
-    # Process DHCP leases first
+    # Process DHCP leases only
     process_dhcp_leases
     
-    # Then add any devices from ARP table that weren't in DHCP leases
-    process_arp_table
-    
     # Add footer
-    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo "✦✦✦✦✦ REVD.CLOUD ✦✦✦✦✦"
 }
 
