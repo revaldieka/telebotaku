@@ -75,11 +75,10 @@ Untuk menggunakan bot, memerlukan beberapa kredensial dari Telegram:
 
 Setelah diinstal, Anda dapat mengelola layanan bot dengan perintah ini:
 
-- **Mulai bot**: `/etc/init.d/revd start`
-- **Hentikan bot**: `/etc/init.d/revd stop`
-- **Mulai ulang bot**: `/etc/init.d/revd restart`
+- **Mulai bot**: `services revd start`
+- **Hentikan bot**: `services revd stop`
+- **Mulai ulang bot**: `services revd restart`
 - **Periksa status**: `service revd status`
-- **Lihat log**: `logread | grep revd`
 
 ## Jika Terjadi Masalah
 
