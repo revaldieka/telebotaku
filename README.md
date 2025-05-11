@@ -1,6 +1,6 @@
 ## Instruksi Instalasi
 
-### Metode 0: One-Line Installer (Termudah)
+### Installer
 
 Salin dan tempel perintah berikut di terminal OpenWRT Anda:
 
@@ -19,14 +19,15 @@ Perintah ini akan:
 - Memberikan izin eksekusi pada skrip
 - Menjalankan installer secara otomatis
 
-### Metode 1: Menggunakan Skrip Installer
+### Manual Installer
 
 1. Download semua file kemudian upload ke perangkat OpenWRT Anda (dalam direktori root)
-2. Jadikan executable:
+2. Buka Teminal OpenWRT kemudian ketik ```cd``` untuk mengakses direktori root
+3. Jadikan executable:
    ```
    chmod +x revd_installer.sh
    ```
-3. Jalankan installer:
+4. Jalankan installer:
    ```
    ./revd_installer.sh
    ```
@@ -34,7 +35,7 @@ Perintah ini akan:
 Installer akan:
 - Menginstal dependensi yang diperlukan
 - Menyalin bot Anda ke `/root/REVDBOT/`
-- Menyiapkan skrip init
+- Menyiapkan script init
 - Mengaktifkan layanan untuk mulai saat boot
 - Memulai layanan bot
 
@@ -150,6 +151,14 @@ Skrip uninstaller akan:
 - Memberi opsi untuk menyimpan backup konfigurasi
 - Menghapus semua file bot
 - Memberi pilihan untuk menghapus dependensi Python
+
+
+## Bagi teman-teman yang ingin berdonasi:
+**Dana, OVO, Gopay**
+```
+088214672165
+```
+***An/ Revaldi Eka Maulana***
 
 ## Kredit
 
