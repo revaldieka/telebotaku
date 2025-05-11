@@ -2,7 +2,7 @@
 
 # OpenWRT Telegram Bot Service Installer
 # Created by REVD.CLOUD
-# Modified for single-user mode (chat ID + bot token only)
+# 
 
 echo "
 ╔═══════════════════════════════════╗
