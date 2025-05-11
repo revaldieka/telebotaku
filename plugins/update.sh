@@ -155,16 +155,6 @@ def send_notification():
             
         # Default message if no custom message is available
         if 'default_message' in locals() and default_message:
-            # Update list
-            update_list = """
-🔄 *Daftar Pembaruan:*
-• Peningkatan stabilitas sistem
-• Perbaikan bug dan error
-• Pengoptimalan performa bot
-• Penambahan fitur baru
-• Peningkatan keamanan sistem
-"""
-
             # Donation information
             donation_info = """
 💰 *Jika teman2 ingin berdonasi bisa ke:*
@@ -177,7 +167,7 @@ an. Revaldi Eka Maulana.
             message = f"✅ *Bot Update Completed Successfully* ({current_time})\n\n" \
                     f"The bot has been updated and is now running normally.\n" \
                     f"You can continue using all bot functions.\n" \
-                    f"{update_list}\n{donation_info}"
+                    f"{donation_info}"
                   
         # Send message
         url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
@@ -269,13 +259,6 @@ if [ ! -f "$ROOT_DIR/update_message.txt" ]; then
 Bot telah diperbarui dan sedang berjalan dengan normal.
 Anda dapat melanjutkan penggunaan semua fungsi bot.
 
-🔄 *Daftar Pembaruan:*
-• Peningkatan stabilitas sistem
-• Perbaikan bug dan error
-• Pengoptimalan performa bot
-• Penambahan fitur baru
-• Peningkatan keamanan sistem
-
 💰 *Jika teman2 ingin berdonasi bisa ke:*
 DANA - OVO - GOPAY
 Nomor 088214672165
@@ -309,20 +292,16 @@ fi
 
 # Display donation information in terminal too
 echo "
-💰 Jika teman2 ingin berdonasi bisa ke:
+✅ Update completed successfully!
+Bot htela di update ke versi terbaru.
+
+
+jika terjadi masalah pada versi ini silahkan restore ke versi sebelumnya.
+  cp $ROOT_DIR/bot_openwrt.py.bak $ROOT_DIR/bot_openwrt.py"
+
+echo "
+💰 Jika teman-teman ingin berdonasi bisa ke:
 DANA - OVO - GOPAY
 Nomor 088214672165
 an. Revaldi Eka Maulana.
 "
-
-echo "
-✅ Update completed successfully!
-Bot has been updated to the latest version.
-A notification will be sent when the bot comes back online.
-
-📝 Custom Update Message:
-You can customize the update notification by editing:
-  $ROOT_DIR/update_message.txt
-
-If you encounter any issues, you can restore the backup:
-  cp $ROOT_DIR/bot_openwrt.py.bak $ROOT_DIR/bot_openwrt.py"
