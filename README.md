@@ -60,6 +60,17 @@ Untuk menggunakan bot, memerlukan beberapa kredensial dari Telegram:
 3. Bot akan membalas dengan ID Anda (contoh: `Your ID: 123456789`)
 4. Salin angka ini sebagai **Admin ID**
 
+### 3. Mendapatkan API ID dan API Hash dari Telegram
+
+1. Buka browser dan kunjungi https://my.telegram.org/auth
+2. Masukkan nomor telepon yang terdaftar di Telegram Anda
+3. Masukkan kode yang dikirim ke aplikasi Telegram Anda
+4. Di menu yang muncul, pilih "API development tools"
+5. Isi formulir App title dan Short name (misal: "OpenWRT Bot")
+6. Di bagian "Platform", pilih salah satu opsi (misal: Desktop)
+7. Klik "Create Application"
+8. Anda akan melihat **API ID** (angka) dan **API Hash** (kode alfanumerik)
+
 ## Manajemen Layanan
 
 Setelah diinstal, Anda dapat mengelola layanan bot dengan perintah ini:
