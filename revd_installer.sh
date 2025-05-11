@@ -264,6 +264,17 @@ device_name=${device_name:-"OpenWRT | REVD.CLOUD"}
 
 # Create or update config.ini with simplified structure
 echo "📝 Membuat config.ini dengan kredensial yang dimasukkan..."
+
+# First, display the content that will be written to config.ini for debugging
+echo "Konten yang akan ditulis ke config.ini:"
+echo "[Telegram]"
+echo "bot_token = $bot_token"
+echo "chat_id = $chat_id"
+echo ""
+echo "[OpenWRT]"
+echo "device_name = $device_name"
+
+# Create the actual config file
 cat > "$ROOT_DIR/config.ini" << EOF
 [Telegram]
 bot_token = $bot_token
@@ -273,7 +284,18 @@ chat_id = $chat_id
 device_name = $device_name
 EOF
 
-echo "✅ File config.ini berhasil dibuat."
+# Verify the file was created properly
+if [ -f "$ROOT_DIR/config.ini" ]; then
+    echo "✅ File config.ini berhasil dibuat di $ROOT_DIR/config.ini"
+    echo "Isi file config.ini:"
+    cat "$ROOT_DIR/config.ini"
+else
+    echo "❌ Gagal membuat file config.ini!"
+    exit 1
+fi
+
+# Set appropriate permissions
+chmod 644 "$ROOT_DIR/config.ini"
 
 # Enable and start service
 echo "🔄 Mengaktifkan dan memulai layanan bot..."
@@ -290,6 +312,7 @@ else
     echo "⚠️ Bot belum berjalan. Coba jalankan manual dengan perintah:"
     echo "   /etc/init.d/revd start"
     echo "   Atau lihat error dengan: python3 $ROOT_DIR/bot_openwrt.py"
+    echo "   Periksa log dengan: tail -f /var/log/revd_bot.log"
 fi
 
 # Show final instructions
