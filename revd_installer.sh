@@ -2,7 +2,7 @@
 
 # OpenWRT Telegram Bot Service Installer
 # Created by REVD.CLOUD
-# 
+# Improved version with GitHub repository integration
 
 echo "
 ╔═══════════════════════════════════╗
@@ -150,7 +150,7 @@ start_service() {
     fi
 
     # Check for plugin scripts and copy from backup if missing
-    for script in speedtest.sh reboot.sh ping.sh clear_ram.sh vnstat.sh system.sh userlist.sh update.sh; do
+    for script in speedtest.sh reboot.sh ping.sh clear_ram.sh vnstat.sh system.sh; do
         if [ ! -f "$PLUGINS_DIR/\$script" ] && [ -f "/etc/revd_backup/\$script" ]; then
             cp "/etc/revd_backup/\$script" "$PLUGINS_DIR/\$script"
             chmod +x "$PLUGINS_DIR/\$script"
@@ -218,15 +218,45 @@ fi
 
 # Copy plugin scripts to backup directory
 echo "💾 Menyalin script plugins ke direktori backup..."
-for script in speedtest.sh reboot.sh ping.sh clear_ram.sh vnstat.sh system.sh userlist.sh update.sh; do
+for script in speedtest.sh reboot.sh ping.sh clear_ram.sh vnstat.sh system.sh; do
     if [ -f "$PLUGINS_DIR/$script" ]; then
         cp "$PLUGINS_DIR/$script" "/etc/revd_backup/$script"
         chmod +x "/etc/revd_backup/$script"
     fi
 done
 
-# Get Bot credentials from user
-echo "📝 Masukkan kredensial Bot Telegram:"
+# Get API credentials from user
+echo "📝 Masukkan kredensial API Telegram dan informasi admin:"
+
+# Ask for API ID with validation
+while true; do
+    read -p "API ID: " api_id
+    if [ -n "$api_id" ]; then
+        # Validate API ID (should be numeric)
+        if echo "$api_id" | grep -q "^[0-9]\+$"; then
+            break
+        else
+            echo "⚠️ API ID harus berupa angka. Silakan coba lagi."
+        fi
+    else
+        echo "⚠️ API ID tidak boleh kosong! Dapatkan dari https://my.telegram.org"
+    fi
+done
+
+# Ask for API Hash with validation
+while true; do
+    read -p "API Hash: " api_hash
+    if [ -n "$api_hash" ]; then
+        # Validate API Hash (should be hexadecimal, 32 chars)
+        if echo "$api_hash" | grep -q "^[0-9a-fA-F]\{32\}$"; then
+            break
+        else
+            echo "⚠️ API Hash harus berupa kode hex 32 karakter. Silakan coba lagi."
+        fi
+    else
+        echo "⚠️ API Hash tidak boleh kosong! Dapatkan dari https://my.telegram.org"
+    fi
+done
 
 # Ask for Bot Token with validation
 while true; do
@@ -243,18 +273,18 @@ while true; do
     fi
 done
 
-# Ask for Chat ID with validation (it's the user's Telegram ID who will use the bot)
+# Ask for Admin ID with validation
 while true; do
-    read -p "Chat ID (ID Telegram Anda): " chat_id
-    if [ -n "$chat_id" ]; then
-        # Validate Chat ID (should be numeric)
-        if echo "$chat_id" | grep -q "^[0-9]\+$"; then
+    read -p "Admin ID: " admin_id
+    if [ -n "$admin_id" ]; then
+        # Validate Admin ID (should be numeric)
+        if echo "$admin_id" | grep -q "^[0-9]\+$"; then
             break
         else
-            echo "⚠️ Chat ID harus berupa angka. Silakan coba lagi."
+            echo "⚠️ Admin ID harus berupa angka. Silakan coba lagi."
         fi
     else
-        echo "⚠️ Chat ID tidak boleh kosong! Ini adalah ID Telegram Anda."
+        echo "⚠️ Admin ID tidak boleh kosong! Ini adalah ID Telegram Anda."
     fi
 done
 
@@ -262,40 +292,20 @@ done
 read -p "Device Name [default: OpenWRT | REVD.CLOUD]: " device_name
 device_name=${device_name:-"OpenWRT | REVD.CLOUD"}
 
-# Create or update config.ini with simplified structure
+# Create or update config.ini
 echo "📝 Membuat config.ini dengan kredensial yang dimasukkan..."
-
-# First, display the content that will be written to config.ini for debugging
-echo "Konten yang akan ditulis ke config.ini:"
-echo "[Telegram]"
-echo "bot_token = $bot_token"
-echo "chat_id = $chat_id"
-echo ""
-echo "[OpenWRT]"
-echo "device_name = $device_name"
-
-# Create the actual config file
 cat > "$ROOT_DIR/config.ini" << EOF
 [Telegram]
+api_id = $api_id
+api_hash = $api_hash
 bot_token = $bot_token
-chat_id = $chat_id
+admin_id = $admin_id
 
 [OpenWRT]
 device_name = $device_name
 EOF
 
-# Verify the file was created properly
-if [ -f "$ROOT_DIR/config.ini" ]; then
-    echo "✅ File config.ini berhasil dibuat di $ROOT_DIR/config.ini"
-    echo "Isi file config.ini:"
-    cat "$ROOT_DIR/config.ini"
-else
-    echo "❌ Gagal membuat file config.ini!"
-    exit 1
-fi
-
-# Set appropriate permissions
-chmod 644 "$ROOT_DIR/config.ini"
+echo "✅ File config.ini berhasil dibuat."
 
 # Enable and start service
 echo "🔄 Mengaktifkan dan memulai layanan bot..."
@@ -312,10 +322,9 @@ else
     echo "⚠️ Bot belum berjalan. Coba jalankan manual dengan perintah:"
     echo "   /etc/init.d/revd start"
     echo "   Atau lihat error dengan: python3 $ROOT_DIR/bot_openwrt.py"
-    echo "   Periksa log dengan: tail -f /var/log/revd_bot.log"
 fi
 
 # Show final instructions
 echo ""
 echo "✅ Instalasi selesai!"
-echo "Silakan kirim pesan /start ke bot Telegram Anda untuk memulai"
+echo "Tinggal /strart bot telegram nya cik"
