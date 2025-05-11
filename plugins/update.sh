@@ -7,7 +7,6 @@
 GITHUB_REPO="https://github.com/revaldieka/telebotaku.git"
 ROOT_DIR="/root/REVDBOT"
 TEMP_DIR="/tmp/bot_update_temp"
-PLUGINS_DIR="$ROOT_DIR/plugins"
 
 # Create temporary directory for update
 if [ -d "$TEMP_DIR" ]; then
@@ -46,12 +45,12 @@ chmod +x "$ROOT_DIR/bot_openwrt.py"
 # Update plugins
 echo "🔌 Updating plugins..."
 if [ -d "$TEMP_DIR/plugins" ]; then
-    mkdir -p "$PLUGINS_DIR"
+    mkdir -p "$ROOT_DIR/plugins"
     for plugin in "$TEMP_DIR/plugins"/*; do
         if [ -f "$plugin" ]; then
             plugin_name=$(basename "$plugin")
-            cp "$plugin" "$PLUGINS_DIR/$plugin_name"
-            chmod +x "$PLUGINS_DIR/$plugin_name"
+            cp "$plugin" "$ROOT_DIR/plugins/$plugin_name"
+            chmod +x "$ROOT_DIR/plugins/$plugin_name"
             echo "  ✓ Updated plugin: $plugin_name"
         fi
     done
@@ -59,92 +58,188 @@ else
     echo "  ⚠️ No plugins directory found in update."
 fi
 
-# Install or update the post-update notification script
-echo "📣 Setting up post-update notification..."
-cat > "$PLUGINS_DIR/post_update.sh" << 'EOF'
-#!/bin/sh
+# Add startup notification script
+echo "📣 Adding startup notification script..."
+cat > "$ROOT_DIR/plugins/bot_startup_notification.py" << 'EOF'
+import os
+import re
+import logging
+import configparser
+import time
+import requests
+from pathlib import Path
 
-# Post-update notification script for OpenWRT Telegram Bot
-# This script should be placed in the plugins directory
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    filename='/tmp/bot_notification.log'
+)
+logger = logging.getLogger("startup_notifier")
 
-# Configuration file path
-CONFIG_PATH="/root/REVDBOT/config.ini"
+def load_config():
+    """Load configuration from config.ini."""
+    config = {
+        'api_id': '',
+        'api_hash': '',
+        'bot_token': '',
+        'admin_id': 0,
+    }
 
-# Function to read values from config file
-read_config() {
-    local section="$1"
-    local key="$2"
-    local file="$3"
+    # Try to load from config file
+    script_dir = Path(__file__).parent.parent
+    config_file = script_dir / 'config.ini'
     
-    # Use grep and sed to extract the value from the config file
-    grep -A 10 "^\[$section\]" "$file" | grep "^$key\s*=" | sed 's/^[^=]*=\s*//'
-}
-
-# Read the configuration
-if [ -f "$CONFIG_PATH" ]; then
-    API_ID=$(read_config "Telegram" "api_id" "$CONFIG_PATH")
-    API_HASH=$(read_config "Telegram" "api_hash" "$CONFIG_PATH")
-    BOT_TOKEN=$(read_config "Telegram" "bot_token" "$CONFIG_PATH")
-    ADMIN_ID=$(read_config "Telegram" "admin_id" "$CONFIG_PATH")
+    if not config_file.exists():
+        logger.error("Config file not found: %s", config_file)
+        return None
     
-    if [ -z "$API_ID" ] || [ -z "$API_HASH" ] || [ -z "$BOT_TOKEN" ] || [ -z "$ADMIN_ID" ]; then
-        echo "❌ Error: Missing configuration values"
-        exit 1
-    fi
-else
-    echo "❌ Error: Config file not found at $CONFIG_PATH"
-    exit 1
-fi
+    try:
+        parser = configparser.ConfigParser()
+        parser.read(config_file)
+        
+        if 'Telegram' in parser:
+            config['api_id'] = parser['Telegram'].get('api_id', '')
+            config['api_hash'] = parser['Telegram'].get('api_hash', '')
+            config['bot_token'] = parser['Telegram'].get('bot_token', '')
+            config['admin_id'] = int(parser['Telegram'].get('admin_id', 0))
+        
+        return config
+        
+    except Exception as e:
+        logger.error(f"Error loading config: {str(e)}")
+        return None
 
-# Wait for bot to fully start (adjust if needed)
-sleep 15
+def check_update_flag():
+    """Check if update flag file exists."""
+    flag_file = Path("/tmp/bot_updated")
+    return flag_file.exists()
 
-# Get current date and time
-TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
+def send_notification():
+    """Send notification to admin."""
+    try:
+        # Load config
+        config = load_config()
+        if not config:
+            logger.error("Failed to load configuration")
+            return False
+            
+        # Get bot token and admin ID
+        bot_token = config['bot_token']
+        admin_id = config['admin_id']
+        
+        if not bot_token or admin_id == 0:
+            logger.error("Missing bot token or admin ID")
+            return False
+            
+        # Current time
+        current_time = time.strftime("%Y-%m-%d %H:%M:%S")
+        
+        # Message to send
+        message = f"✅ *Bot Update Completed Successfully* ({current_time})\n\n" \
+                  f"The bot has been updated and is now running normally.\n" \
+                  f"You can continue using all bot functions."
+                  
+        # Send message
+        url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+        data = {
+            "chat_id": admin_id,
+            "text": message,
+            "parse_mode": "Markdown"
+        }
+        
+        response = requests.post(url, data=data)
+        if response.status_code == 200:
+            logger.info(f"Update notification sent to admin {admin_id}")
+            return True
+        else:
+            logger.error(f"Failed to send notification: {response.text}")
+            return False
+            
+    except Exception as e:
+        logger.error(f"Error sending notification: {str(e)}")
+        return False
 
-# Send success notification using curl and Telegram API
-MESSAGE="✅ *Bot Update Completed* ($TIMESTAMP)
+def clear_update_flag():
+    """Clear the update flag file."""
+    flag_file = Path("/tmp/bot_updated")
+    if flag_file.exists():
+        flag_file.unlink()
+        logger.info("Update flag cleared")
 
-The bot has been successfully updated and is now running.
-You can continue using all bot functions as normal.
-
-_If you notice any issues with the new version, you can restore the backup using the instructions from the update log._"
-
-# URL encode the message
-MESSAGE=$(echo "$MESSAGE" | sed 's/ /%20/g; s/\n/%0A/g; s/\*/%2A/g; s/_/%5F/g')
-
-# Send message using Telegram API
-curl -s "https://api.telegram.org/bot$BOT_TOKEN/sendMessage?chat_id=$ADMIN_ID&text=$MESSAGE&parse_mode=Markdown" > /dev/null
-
-echo "Notification sent to admin ($ADMIN_ID)"
+if __name__ == "__main__":
+    # Wait a bit for network and services to start
+    time.sleep(10)
+    
+    # Check if this is a post-update startup
+    if check_update_flag():
+        logger.info("Bot was updated, sending notification")
+        if send_notification():
+            clear_update_flag()
+    else:
+        logger.info("No update flag found, skipping notification")
 EOF
 
-# Make the post-update script executable
-chmod +x "$PLUGINS_DIR/post_update.sh"
+# Modify bot startup script to run notification
+echo "📝 Creating bot startup wrapper..."
+cat > "$ROOT_DIR/start_bot.sh" << 'EOF'
+#!/bin/sh
+
+# Startup wrapper for bot that includes notification functionality
+cd "$(dirname "$0")"
+
+# Run the notification script to check for update flag
+python3 plugins/bot_startup_notification.py &
+
+# Start the main bot
+python3 bot_openwrt.py
+EOF
+
+chmod +x "$ROOT_DIR/start_bot.sh"
+chmod +x "$ROOT_DIR/plugins/bot_startup_notification.py"
+
+# Create or modify init.d script to use the wrapper
+echo "📝 Updating init.d script..."
+cat > "/etc/init.d/revd" << 'EOF'
+#!/bin/sh /etc/rc.common
+
+START=99
+STOP=15
+USE_PROCD=1
+
+start_service() {
+    procd_open_instance
+    procd_set_param command /root/REVDBOT/start_bot.sh
+    procd_set_param stdout 1
+    procd_set_param stderr 1
+    procd_set_param respawn ${respawn_threshold:-3600} ${respawn_timeout:-5} ${respawn_retry:-5}
+    procd_close_instance
+}
+EOF
+
+chmod +x "/etc/init.d/revd"
+
+# Create update flag
+echo "🚩 Setting update flag..."
+touch "/tmp/bot_updated"
 
 # Clean up
 rm -rf "$TEMP_DIR"
 echo "🧹 Cleaned up temporary files."
 
-# Create a trigger script to run post_update.sh after reboot
-echo "📝 Creating update notification trigger..."
-cat > "/tmp/run_post_update.sh" << 'EOF'
-#!/bin/sh
-# Wait a bit for services to start
-sleep 5
-# Run the post-update notification script
-/root/REVDBOT/plugins/post_update.sh &
-EOF
-
-chmod +x "/tmp/run_post_update.sh"
+# Install required package for notification script
+echo "📦 Checking for required packages..."
+if ! opkg list-installed | grep -q "python3-requests"; then
+    echo "📦 Installing python3-requests package..."
+    opkg update && opkg install python3-requests
+else
+    echo "✓ python3-requests already installed."
+fi
 
 # Restart bot service
 echo "🔄 Restarting bot service..."
 if /etc/init.d/revd restart; then
     echo "✅ Bot service restarted successfully."
-    # Run the post-update trigger in the background
-    /bin/sh /tmp/run_post_update.sh &
-    echo "📣 Post-update notification scheduled."
 else
     echo "⚠️ Failed to restart service. Please restart manually with: /etc/init.d/revd restart"
 fi
@@ -152,5 +247,6 @@ fi
 echo "
 ✅ Update completed successfully!
 Bot has been updated to the latest version.
+A notification will be sent when the bot comes back online.
 If you encounter any issues, you can restore the backup:
   cp $ROOT_DIR/bot_openwrt.py.bak $ROOT_DIR/bot_openwrt.py"
