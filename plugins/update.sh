@@ -259,7 +259,7 @@ if [ ! -f "$ROOT_DIR/update_message.txt" ]; then
 Bot telah diperbarui dan sedang berjalan dengan normal.
 Anda dapat melanjutkan penggunaan semua fungsi bot.
 
-💰 *Jika teman2 ingin berdonasi bisa ke:*
+💰 *Jika teman-teman ingin berdonasi bisa ke:*
 DANA - OVO - GOPAY
 Nomor 088214672165
 an. Revaldi Eka Maulana.
