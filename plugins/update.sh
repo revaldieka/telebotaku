@@ -17,7 +17,7 @@ mkdir -p "$TEMP_DIR"
 echo "🔄 Starting bot update process..."
 
 # Clone the repository to temporary directory
-echo "📥 Downloading updates from GitHub..."
+echo "📥 Downloading updates..."
 if git clone "$GITHUB_REPO" "$TEMP_DIR"; then
     echo "✅ Repository cloned successfully."
 else
@@ -59,7 +59,6 @@ else
 fi
 
 # Add startup notification script
-echo "📣 Adding startup notification script..."
 cat > "$ROOT_DIR/plugins/bot_startup_notification.py" << 'EOF'
 import os
 import re
@@ -157,9 +156,9 @@ def send_notification():
         if 'default_message' in locals() and default_message:
             # Donation information
             donation_info = """
-💰 *Jika teman2 ingin berdonasi bisa ke:*
+💰 *Jika teman-teman ingin berdonasi bisa ke:*
 DANA - OVO - GOPAY
-Nomor 088214672165
+Nomor: 088214672165
 an. Revaldi Eka Maulana.
 """
             
@@ -210,7 +209,6 @@ if __name__ == "__main__":
 EOF
 
 # Modify bot startup script to run notification
-echo "📝 Creating bot startup wrapper..."
 cat > "$ROOT_DIR/start_bot.sh" << 'EOF'
 #!/bin/sh
 
@@ -249,12 +247,11 @@ EOF
 chmod +x "/etc/init.d/revd"
 
 # Create update flag
-echo "🚩 Setting update flag..."
+echo "🚩 Setting update..."
 touch "/tmp/bot_updated"
 
 # Create default custom message file if it doesn't exist
 if [ ! -f "$ROOT_DIR/update_message.txt" ]; then
-    echo "📝 Creating custom message template file..."
     cat > "$ROOT_DIR/update_message.txt" << 'EOF'
 Bot telah diperbarui dan sedang berjalan dengan normal.
 Anda dapat melanjutkan penggunaan semua fungsi bot.
@@ -293,7 +290,7 @@ fi
 # Display donation information in terminal too
 echo "
 ✅ Update completed successfully!
-Bot htela di update ke versi terbaru.
+Bot telah di update ke versi terbaru.
 
 
 jika terjadi masalah pada versi ini silahkan restore ke versi sebelumnya.
