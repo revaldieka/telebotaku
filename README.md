@@ -1,6 +1,6 @@
 ## Instruksi Instalasi
 
-### Installer
+### Auto Installer
 
 Salin dan tempel perintah berikut di terminal OpenWRT Anda:
 
