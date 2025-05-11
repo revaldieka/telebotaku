@@ -19,9 +19,11 @@ logger = logging.getLogger(__name__)
 def load_config() -> Dict[str, Any]:
     """Load configuration from config.ini."""
     config = {
-        # Simplified defaults - only bot_token and chat_id required
+        # Empty defaults - will be filled from config.ini
+        'api_id': '',
+        'api_hash': '',
         'bot_token': '',
-        'chat_id': 0,
+        'admin_id': 0,
         'device_name': 'OpenWRT'
     }
 
@@ -38,20 +40,28 @@ def load_config() -> Dict[str, Any]:
         parser.read(config_file)
         
         if 'Telegram' in parser:
+            if not parser['Telegram'].get('api_id'):
+                raise ValueError("API ID is missing in config.ini")
+            
+            if not parser['Telegram'].get('api_hash'):
+                raise ValueError("API Hash is missing in config.ini")
+            
             if not parser['Telegram'].get('bot_token'):
                 raise ValueError("Bot token is missing in config.ini")
             
-            if not parser['Telegram'].get('chat_id'):
-                raise ValueError("Chat ID is missing in config.ini")
+            if not parser['Telegram'].get('admin_id'):
+                raise ValueError("Admin ID is missing in config.ini")
             
+            config['api_id'] = parser['Telegram'].get('api_id')
+            config['api_hash'] = parser['Telegram'].get('api_hash')
             config['bot_token'] = parser['Telegram'].get('bot_token')
-            config['chat_id'] = int(parser['Telegram'].get('chat_id'))
+            config['admin_id'] = int(parser['Telegram'].get('admin_id'))
                 
         if 'OpenWRT' in parser:
             config['device_name'] = parser['OpenWRT'].get('device_name', config['device_name'])
         
         logger.info(f"Configuration loaded successfully")
-        logger.info(f"Chat ID: {config['chat_id']}")
+        logger.info(f"Admin ID: {config['admin_id']}")
         logger.info(f"Device name: {config['device_name']}")
         return config
         
@@ -69,7 +79,7 @@ class OpenWRTBot:
         """Initialize the bot with configuration."""
         self.config = config
         self.client = None
-        self.chat_id = self.config['chat_id']
+        self.admin_id = self.config['admin_id']
         self.script_dir = Path(__file__).parent / "plugins"  # Use plugins directory
         self.me = None  # Store bot user info
         
@@ -87,18 +97,17 @@ class OpenWRTBot:
             "vnstat.sh", 
             "system.sh",
             "userlist.sh",
-            "update.sh"
+            "update.sh"  # Added update.sh to required scripts
         ]
         
     async def init_client(self):
         """Initialize the Telegram client."""
         try:
-            # Create the client with session name based on bot token
-            session_name = self.config['bot_token'].split(':')[0]
+            # Create the client with explicit loop parameter
             self.client = TelegramClient(
-                session_name, 
-                api_id=123456,     # Dummy API ID (required by Telethon but won't be used)
-                api_hash="dummy",  # Dummy API Hash (required by Telethon but won't be used)
+                'bot_session', 
+                self.config['api_id'], 
+                self.config['api_hash'],
                 connection_retries=None  # Retry connection indefinitely
             )
             
@@ -123,7 +132,7 @@ class OpenWRTBot:
             [Button.text("📊 System Info", resize=True), Button.text("🔄 Reboot", resize=True)],
             [Button.text("🧹 Clear RAM", resize=True), Button.text("🌐 Network Stats", resize=True)],
             [Button.text("🚀 Speed Test", resize=True), Button.text("📡 Ping Test", resize=True)],
-            [Button.text("👥 User List", resize=True), Button.text("⬆️ Update Bot", resize=True)]
+            [Button.text("👥 User List", resize=True), Button.text("⬆️ Update Bot", resize=True)]  # Added Update Bot button
         ]
     
     async def send_message(self, event, text, buttons=None, add_keyboard=True):
@@ -159,6 +168,10 @@ class OpenWRTBot:
             except Exception as e:
                 logger.error(f"Error sending plain message: {str(e)}")
                 return None
+        
+    def is_admin(self, user_id: int) -> bool:
+        """Check if a user is the admin of the bot."""
+        return user_id == self.admin_id
     
     def run_command(self, command: str) -> str:
         """Execute a shell command and return the output."""
@@ -373,6 +386,11 @@ class OpenWRTBot:
         @self.client.on(events.NewMessage(pattern='/update'))
         async def update_handler(event):
             """Handle /update command."""
+            # Only allow admin to update
+            if not self.is_admin(event.sender_id):
+                await self.send_message(event, "⛔ *Only admin can update the bot*")
+                return
+                
             # Create confirmation buttons
             confirm_buttons = [
                 [Button.inline("✅ Yes", b"update_yes"), 
@@ -391,6 +409,11 @@ class OpenWRTBot:
         async def update_yes_handler(event):
             """Handle update confirmation."""
             user_id = event.sender_id
+            # Only allow admin to update
+            if not self.is_admin(user_id):
+                await self.send_message(event, "⛔ *Only admin can update the bot*")
+                return
+                
             # Log who initiated the update
             logger.info(f"User {user_id} confirmed update")
             await self.send_message(event, "🔄 *Updating the bot...*", add_keyboard=False)
@@ -483,7 +506,28 @@ class OpenWRTBot:
                 result = self.get_user_list()
                 await self.send_message(event, f"```\n{result}\n```")
             elif text == "⬆️ Update Bot":
+                # Only allow admin to update
+                if not self.is_admin(event.sender_id):
+                    await self.send_message(event, "⛔ *Only admin can update the bot*")
+                    return
                 await update_handler(event)
+        
+        # Admin verification
+        @self.client.on(events.NewMessage())
+        async def admin_check_handler(event):
+            """Verify if the user is an admin."""
+            # Skip messages from the bot itself
+            if event.sender_id == self.me.id:  # Fixed: Use self.me.id instead of self.client.user_id
+                return
+                
+            # If message is from non-admin, check if it's a command
+            if not self.is_admin(event.sender_id):
+                # Check if the message is a command that requires admin access
+                if event.message.message.startswith('/update') or event.message.message == "⬆️ Update Bot":
+                    await self.send_message(event, "⛔ *Only admin can access this command*")
+                    return
+                    
+                # For all other commands, allow access for any user
 
 async def main():
     """Main entry point for the bot."""
