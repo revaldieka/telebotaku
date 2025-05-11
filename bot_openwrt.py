@@ -333,7 +333,7 @@ class OpenWRTBot:
                 f"`/clearram` - Clear RAM cache\n"
                 f"`/network` - Get network statistics\n"
                 f"`/speedtest` - Run a speed test\n"
-                f"`/ping [target]` - Ping a target (default: google.com)\n"
+                f"`/ping [target]` - Check Ping \n"
                 f"`/userlist` - List connected users\n"
                 f"`/update` - Update bot from GitHub\n"
                 f"`/uninstall` - Uninstall the bot\n"
@@ -351,7 +351,7 @@ class OpenWRTBot:
                 f"`/clearram` - Clear RAM cache\n"
                 f"`/network` - Get network statistics\n"
                 f"`/speedtest` - Run a speed test\n"
-                f"`/ping [target]` - Ping a target (default: google.com)\n"
+                f"`/ping [target]` - Check Ping\n"
                 f"`/userlist` - List connected users\n"
                 f"`/update` - Update bot from GitHub\n"
                 f"`/uninstall` - Uninstall the bot\n"
@@ -414,7 +414,7 @@ class OpenWRTBot:
             await self.send_message(
                 event, 
                 "⚠️ *Are you sure you want to update the bot?*\n\n"
-                "This will download the latest version from GitHub.",
+                "This will download the latest version.",
                 buttons=confirm_buttons,
                 add_keyboard=False
             )
