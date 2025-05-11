@@ -414,7 +414,7 @@ class OpenWRTBot:
             await self.send_message(
                 event, 
                 "⚠️ *Are you sure you want to update the bot?*\n\n"
-                "This will download the latest version.",
+                "This will download the latest version from GitHub.",
                 buttons=confirm_buttons,
                 add_keyboard=False
             )
