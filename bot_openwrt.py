@@ -97,7 +97,8 @@ class OpenWRTBot:
             "vnstat.sh", 
             "system.sh",
             "userlist.sh",
-            "update.sh"  # Added update.sh to required scripts
+            "update.sh",  # Added update.sh to required scripts
+            "uninstall.sh"  # Added uninstall.sh to required scripts
         ]
         
     async def init_client(self):
@@ -132,7 +133,8 @@ class OpenWRTBot:
             [Button.text("📊 System Info", resize=True), Button.text("🔄 Reboot", resize=True)],
             [Button.text("🧹 Clear RAM", resize=True), Button.text("🌐 Network Stats", resize=True)],
             [Button.text("🚀 Speed Test", resize=True), Button.text("📡 Ping Test", resize=True)],
-            [Button.text("👥 User List", resize=True), Button.text("⬆️ Update Bot", resize=True)]  # Added Update Bot button
+            [Button.text("👥 User List", resize=True), Button.text("⬆️ Update Bot", resize=True)],
+            [Button.text("🗑️ Uninstall Bot", resize=True)]  # Added Uninstall Bot button
         ]
     
     async def send_message(self, event, text, buttons=None, add_keyboard=True):
@@ -295,6 +297,16 @@ class OpenWRTBot:
             logger.error(f"Update failed: {str(e)}")
             return f"❌ Update failed: {str(e)}"
     
+    def uninstall_bot(self, keep_config: bool = False) -> str:
+        """Uninstall the bot."""
+        try:
+            # Pass keep_config parameter to uninstall script
+            option = "y" if keep_config else "n"
+            return self.run_script("uninstall.sh", option)
+        except Exception as e:
+            logger.error(f"Uninstall failed: {str(e)}")
+            return f"❌ Uninstall failed: {str(e)}"
+    
     def verify_scripts(self) -> bool:
         """Verify that all required scripts are in the plugins directory."""
         missing_scripts = []
@@ -324,6 +336,7 @@ class OpenWRTBot:
                 f"`/ping [target]` - Ping a target (default: google.com)\n"
                 f"`/userlist` - List connected users\n"
                 f"`/update` - Update bot from GitHub\n"
+                f"`/uninstall` - Uninstall the bot\n"
                 f"`/help` - Show this help message"
             )
         
@@ -341,6 +354,7 @@ class OpenWRTBot:
                 f"`/ping [target]` - Ping a target (default: google.com)\n"
                 f"`/userlist` - List connected users\n"
                 f"`/update` - Update bot from GitHub\n"
+                f"`/uninstall` - Uninstall the bot\n"
                 f"`/help` - Show this help message"
             )
         
@@ -424,6 +438,92 @@ class OpenWRTBot:
         async def update_no_handler(event):
             """Handle update cancellation."""
             await self.send_message(event, "✅ *Update cancelled*")
+        
+        @self.client.on(events.NewMessage(pattern='/uninstall'))
+        async def uninstall_handler(event):
+            """Handle /uninstall command."""
+            # Only allow admin to uninstall
+            if not self.is_admin(event.sender_id):
+                await self.send_message(event, "⛔ *Only admin can uninstall the bot*")
+                return
+                
+            # Create confirmation buttons
+            confirm_buttons = [
+                [Button.inline("✅ Yes, keep config", b"uninstall_yes_keep"), 
+                 Button.inline("✅ Yes, delete all", b"uninstall_yes_delete")],
+                [Button.inline("❌ No, cancel", b"uninstall_no")]
+            ]
+            
+            await self.send_message(
+                event, 
+                "⚠️ *Are you sure you want to uninstall the bot?*\n\n"
+                "- Choose *'Yes, keep config'* to save your configuration files\n"
+                "- Choose *'Yes, delete all'* to remove everything\n"
+                "- Choose *'No, cancel'* to abort uninstallation",
+                buttons=confirm_buttons,
+                add_keyboard=False
+            )
+
+        @self.client.on(events.CallbackQuery(pattern=r"uninstall_yes_keep"))
+        async def uninstall_yes_keep_handler(event):
+            """Handle uninstall with config preservation."""
+            user_id = event.sender_id
+            # Only allow admin to uninstall
+            if not self.is_admin(user_id):
+                await self.send_message(event, "⛔ *Only admin can uninstall the bot*")
+                return
+                
+            # Log who initiated the uninstall
+            logger.info(f"User {user_id} confirmed uninstall (keeping config)")
+            await self.send_message(event, "🗑️ *Uninstalling the bot (keeping configuration)...*", add_keyboard=False)
+            result = self.uninstall_bot(keep_config=True)
+            await self.send_message(event, f"```\n{result}\n```")
+            
+            # Send a final message before the bot stops
+            await self.client.send_message(
+                event.chat_id,
+                "👋 *Bot uninstalled. Thank you for using REVD.CLOUD services!*\n\n"
+                "To reinstall in the future, run:\n"
+                "```\nopkg update && (cd /tmp && curl -sLko revd_installer.sh https://raw.githubusercontent.com/revaldieka/telebotaku/main/revd_installer.sh && chmod +x revd_installer.sh && sh revd_installer.sh)\n```"
+            )
+            
+            # Exit the bot process
+            logger.info("Bot uninstalled, exiting process")
+            import sys
+            sys.exit(0)
+
+        @self.client.on(events.CallbackQuery(pattern=r"uninstall_yes_delete"))
+        async def uninstall_yes_delete_handler(event):
+            """Handle uninstall without config preservation."""
+            user_id = event.sender_id
+            # Only allow admin to uninstall
+            if not self.is_admin(user_id):
+                await self.send_message(event, "⛔ *Only admin can uninstall the bot*")
+                return
+                
+            # Log who initiated the uninstall
+            logger.info(f"User {user_id} confirmed uninstall (deleting all)")
+            await self.send_message(event, "🗑️ *Uninstalling the bot (removing all files)...*", add_keyboard=False)
+            result = self.uninstall_bot(keep_config=False)
+            await self.send_message(event, f"```\n{result}\n```")
+            
+            # Send a final message before the bot stops
+            await self.client.send_message(
+                event.chat_id,
+                "👋 *Bot uninstalled. Thank you for using REVD.CLOUD services!*\n\n"
+                "To reinstall in the future, run:\n"
+                "```\nopkg update && (cd /tmp && curl -sLko revd_installer.sh https://raw.githubusercontent.com/revaldieka/telebotaku/main/revd_installer.sh && chmod +x revd_installer.sh && sh revd_installer.sh)\n```"
+            )
+            
+            # Exit the bot process
+            logger.info("Bot uninstalled, exiting process")
+            import sys
+            sys.exit(0)
+
+        @self.client.on(events.CallbackQuery(pattern=r"uninstall_no"))
+        async def uninstall_no_handler(event):
+            """Handle uninstall cancellation."""
+            await self.send_message(event, "✅ *Uninstall cancelled*")
         
         @self.client.on(events.NewMessage(pattern='/clearram'))
         async def clearram_handler(event):
@@ -511,6 +611,12 @@ class OpenWRTBot:
                     await self.send_message(event, "⛔ *Only admin can update the bot*")
                     return
                 await update_handler(event)
+            elif text == "🗑️ Uninstall Bot":
+                # Only allow admin to uninstall
+                if not self.is_admin(event.sender_id):
+                    await self.send_message(event, "⛔ *Only admin can uninstall the bot*")
+                    return
+                await uninstall_handler(event)
         
         # Admin verification
         @self.client.on(events.NewMessage())
@@ -523,7 +629,10 @@ class OpenWRTBot:
             # If message is from non-admin, check if it's a command
             if not self.is_admin(event.sender_id):
                 # Check if the message is a command that requires admin access
-                if event.message.message.startswith('/update') or event.message.message == "⬆️ Update Bot":
+                if (event.message.message.startswith('/update') or 
+                    event.message.message == "⬆️ Update Bot" or
+                    event.message.message.startswith('/uninstall') or
+                    event.message.message == "🗑️ Uninstall Bot"):
                     await self.send_message(event, "⛔ *Only admin can access this command*")
                     return
                     
