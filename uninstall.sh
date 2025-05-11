@@ -35,32 +35,15 @@ if [ ! -f "$INIT_SCRIPT" ]; then
     if [ -d "$ROOT_DIR" ]; then
         echo "📁 Namun direktori bot ditemukan. Lanjutkan penghapusan..."
     else
-        echo "❓ Apakah Anda ingin melanjutkan dan mencari sisa-sisa instalasi? (y/n)"
-        read -r continue_cleanup
-        if [ "$continue_cleanup" != "y" ] && [ "$continue_cleanup" != "Y" ]; then
-            echo "Penghapusan dibatalkan."
-            exit 0
-        fi
+        echo "📁 Mencari sisa-sisa instalasi..."
     fi
 else
     echo "✅ Layanan bot ditemukan di sistem."
 fi
 
-# Ask for confirmation
-echo ""
-echo "⚠️  PERINGATAN: Ini akan menghapus Bot Telegram dan semua file terkait."
-echo "    • Layanan akan dihentikan"
-echo "    • Skrip layanan akan dihapus"
-echo "    • Direktori bot akan dihapus"
-echo ""
-echo "❓ Apakah Anda yakin ingin melanjutkan? (y/n)"
-read -r confirm
-if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
-    echo "Penghapusan dibatalkan."
-    exit 0
-fi
+# Get the keep_config parameter
+keep_config=$1
 
-echo ""
 echo "🛑 Menghentikan layanan bot..."
 if [ -f "$INIT_SCRIPT" ]; then
     # Stop the service
@@ -86,11 +69,8 @@ else
     echo "ℹ️  Tidak ada proses bot yang berjalan."
 fi
 
-# Option to keep configuration backup
-echo ""
-echo "❓ Apakah Anda ingin menyimpan file konfigurasi sebagai backup? (y/n)"
-read -r keep_config
-if [ "$keep_config" = "y" ] || [ "$keep_config" = "Y" ]; then
+# Handle configuration based on parameter
+if [ "$keep_config" = "y" ]; then
     # Create backup directory if it doesn't exist
     if [ ! -d "/etc/revd_backup" ]; then
         mkdir -p "/etc/revd_backup"
@@ -150,25 +130,11 @@ for RCLINK in /etc/rc.d/*$SERVICE_NAME; do
     fi
 done
 
+# Skip Python dependencies removal
+echo "ℹ️ Dependensi Python (telethon, configparser, paramiko) tidak dihapus."
+
 echo ""
 echo "✅ Uninstall selesai!"
-echo ""
-echo "ℹ️  Catatan: Dependensi Python berikut mungkin masih terinstal:"
-echo "    • telethon, configparser, paramiko"
-echo "    (dependensi ini mungkin digunakan oleh aplikasi lain)"
-echo ""
-echo "❓ Apakah Anda ingin mencoba menghapus dependensi Python? (y/n)"
-read -r remove_deps
-if [ "$remove_deps" = "y" ] || [ "$remove_deps" = "Y" ]; then
-    echo "📦 Mencoba menghapus dependensi Python..."
-    if command -v pip3 >/dev/null 2>&1; then
-        pip3 uninstall -y telethon configparser paramiko
-        echo "✅ Dependensi Python dihapus."
-    else
-        echo "❌ pip3 tidak ditemukan, tidak dapat menghapus dependensi Python."
-    fi
-fi
-
 echo ""
 echo "🚀 Terima kasih telah menggunakan layanan REVD.CLOUD"
 echo "    Jika Anda ingin menginstal kembali di masa mendatang, gunakan:"
