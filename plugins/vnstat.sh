@@ -65,16 +65,18 @@ get_daily_usage() {
     TODAY_LINE=$(vnstat -i "$INTERFACE" -d --style 0 | grep "$(date +"%Y-%m-%d")")
     
     if [ -n "$TODAY_LINE" ]; then
-        TODAY_RX=$(echo "$TODAY_LINE" | awk '{print $2 " " $3}')
-        TODAY_TX=$(echo "$TODAY_LINE" | awk '{print $5 " " $6}')
+        # Fix: Switch positions to correct RX/TX
+        TODAY_RX=$(echo "$TODAY_LINE" | awk '{print $5 " " $6}')
+        TODAY_TX=$(echo "$TODAY_LINE" | awk '{print $2 " " $3}')
         TODAY_TOTAL=$(echo "$TODAY_LINE" | awk '{print $8 " " $9}')
     else
         # Try alternative format for today (may show as "today")
         TODAY_LINE=$(vnstat -i "$INTERFACE" -d --style 0 | grep "today")
         
         if [ -n "$TODAY_LINE" ]; then
-            TODAY_RX=$(echo "$TODAY_LINE" | awk '{print $2 " " $3}')
-            TODAY_TX=$(echo "$TODAY_LINE" | awk '{print $5 " " $6}')
+            # Fix: Switch positions for "today" format too
+            TODAY_RX=$(echo "$TODAY_LINE" | awk '{print $5 " " $6}')
+            TODAY_TX=$(echo "$TODAY_LINE" | awk '{print $2 " " $3}')
             TODAY_TOTAL=$(echo "$TODAY_LINE" | awk '{print $8 " " $9}')
         else
             TODAY_RX="0 KiB"
@@ -92,6 +94,7 @@ get_monthly_usage() {
     MONTH_LINE=$(vnstat -i "$INTERFACE" -m 1 --style 0 | sed -n 6p)
     
     if [ -n "$MONTH_LINE" ]; then
+        # Keep original columns as they were already correct
         MONTH_RX=$(echo "$MONTH_LINE" | awk '{print $5 " " $6}')
         MONTH_TX=$(echo "$MONTH_LINE" | awk '{print $2 " " $3}')
         MONTH_TOTAL=$(echo "$MONTH_LINE" | awk '{print $8 " " $9}')
@@ -148,7 +151,7 @@ cat << EOF
   📡 Interface: $INTERFACE
 
   TODAY:
-  ↓ Download: $TODAY_RX
+  ↓ Download: $TODAY_RX 
   ↑ Upload:   $TODAY_TX
   ∑ Total:    $TODAY_TOTAL
 
