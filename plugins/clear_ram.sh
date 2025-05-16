@@ -36,8 +36,8 @@ echo 3 > /proc/sys/vm/drop_caches
 AFTER=$(free | grep "Mem:" | awk '{printf "%.2f", $4/1024}')
 AFTER_PERCENT=$(free | grep "Mem:" | awk '{printf "%.1f", $4*100/$2}')
 
-# Calculate freed memory
-FREED_MB=$(echo "$AFTER - $BEFORE" | bc)
+# Calculate freed memory - using awk for better floating point handling
+FREED_MB=$(awk -v after="$AFTER" -v before="$BEFORE" 'BEGIN {printf "%.2f", after - before}')
 
 # Format the report
 cat << EOF
