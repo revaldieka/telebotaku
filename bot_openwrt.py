@@ -377,7 +377,7 @@ class OpenWRTBot:
             await self.send_message(
                 event, 
                 "⚠️ Yakin mau di restart STB nya?\n\n"
-                Ini akan menyebabkan koneksi terputus selama beberapa saat,
+                "Ini akan menyebabkan koneksi terputus selama beberapa saat",
                 buttons=confirm_buttons,
                 add_keyboard=False
             )
