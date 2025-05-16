@@ -361,7 +361,7 @@ class OpenWRTBot:
         @self.client.on(events.NewMessage(pattern='/system'))
         async def system_handler(event):
             """Handle /system command."""
-            await self.send_message(event, "🔍 *Getting system information...*", add_keyboard=False)
+            await self.send_message(event, "🔍 Mendapatkan Informasi...", add_keyboard=False)
             result = self.get_overview()
             await self.send_message(event, f"```\n{result}\n```")
         
@@ -376,8 +376,8 @@ class OpenWRTBot:
             
             await self.send_message(
                 event, 
-                "⚠️ *Are you sure you want to reboot the device?*\n\n"
-                "This will disconnect the device for 1-2 minutes.",
+                "⚠️ Yakin mau di restart STB nya?\n\n"
+                Ini akan menyebabkan koneksi terputus selama beberapa saat,
                 buttons=confirm_buttons,
                 add_keyboard=False
             )
@@ -402,7 +402,7 @@ class OpenWRTBot:
             """Handle /update command."""
             # Only allow admin to update
             if not self.is_admin(event.sender_id):
-                await self.send_message(event, "⛔ *Only admin can update the bot*")
+                await self.send_message(event, "⛔ Hanya admin yang bisa melakukan update bot")
                 return
                 
             # Create confirmation buttons
@@ -425,26 +425,26 @@ class OpenWRTBot:
             user_id = event.sender_id
             # Only allow admin to update
             if not self.is_admin(user_id):
-                await self.send_message(event, "⛔ *Only admin can update the bot*")
+                await self.send_message(event, "⛔ Hanya admin yang bisa melakukan update bot")
                 return
                 
             # Log who initiated the update
             logger.info(f"User {user_id} confirmed update")
-            await self.send_message(event, "🔄 *Updating the bot...*", add_keyboard=False)
+            await self.send_message(event, "🔄 Mengupdate BOT...", add_keyboard=False)
             result = self.update_bot()
             await self.send_message(event, f"```\n{result}\n```")
 
         @self.client.on(events.CallbackQuery(pattern=r"update_no"))
         async def update_no_handler(event):
             """Handle update cancellation."""
-            await self.send_message(event, "✅ *Update cancelled*")
+            await self.send_message(event, "✅ Update dibatalkan")
         
         @self.client.on(events.NewMessage(pattern='/uninstall'))
         async def uninstall_handler(event):
             """Handle /uninstall command."""
             # Only allow admin to uninstall
             if not self.is_admin(event.sender_id):
-                await self.send_message(event, "⛔ *Only admin can uninstall the bot*")
+                await self.send_message(event, "⛔ Hanya admin yang bisa menghapus bot")
                 return
                 
             # Create confirmation buttons
@@ -470,7 +470,7 @@ class OpenWRTBot:
             user_id = event.sender_id
             # Only allow admin to uninstall
             if not self.is_admin(user_id):
-                await self.send_message(event, "⛔ *Only admin can uninstall the bot*")
+                await self.send_message(event, "⛔ Hanya admin yang bisa menghapus bot")
                 return
                 
             # Log who initiated the uninstall
@@ -482,7 +482,7 @@ class OpenWRTBot:
             # Send a final message before the bot stops
             await self.client.send_message(
                 event.chat_id,
-                "👋 *Bot uninstalled. Thank you for using REVD.CLOUD services!*\n\n"
+                "👋 Bot telah di hapus.. BOT by: REVD.CLOUD\n\n"
                 "To reinstall in the future, run:\n"
                 "```\nopkg update && (cd /tmp && curl -sLko revd_installer.sh https://raw.githubusercontent.com/revaldieka/telebotaku/main/revd_installer.sh && chmod +x revd_installer.sh && sh revd_installer.sh)\n```"
             )
@@ -498,19 +498,19 @@ class OpenWRTBot:
             user_id = event.sender_id
             # Only allow admin to uninstall
             if not self.is_admin(user_id):
-                await self.send_message(event, "⛔ *Only admin can uninstall the bot*")
+                await self.send_message(event, "⛔ Hanya admin yang bisa menghapus bot")
                 return
                 
             # Log who initiated the uninstall
             logger.info(f"User {user_id} confirmed uninstall (deleting all)")
-            await self.send_message(event, "🗑️ *Uninstalling the bot (removing all files)...*", add_keyboard=False)
+            await self.send_message(event, "🗑️ Menghapus bot (menghapus semua data)", add_keyboard=False)
             result = self.uninstall_bot(keep_config=False)
             await self.send_message(event, f"```\n{result}\n```")
             
             # Send a final message before the bot stops
             await self.client.send_message(
                 event.chat_id,
-                "👋 *Bot uninstalled. Thank you for using REVD.CLOUD services!*\n\n"
+                "👋 Bot telah di hapus.. BOT by: REVD.CLOUD\n\n"
                 "To reinstall in the future, run:\n"
                 "```\nopkg update && (cd /tmp && curl -sLko revd_installer.sh https://raw.githubusercontent.com/revaldieka/telebotaku/main/revd_installer.sh && chmod +x revd_installer.sh && sh revd_installer.sh)\n```"
             )
@@ -523,26 +523,26 @@ class OpenWRTBot:
         @self.client.on(events.CallbackQuery(pattern=r"uninstall_no"))
         async def uninstall_no_handler(event):
             """Handle uninstall cancellation."""
-            await self.send_message(event, "✅ *Uninstall cancelled*")
+            await self.send_message(event, "✅ Gajadi dihapus")
         
         @self.client.on(events.NewMessage(pattern='/clearram'))
         async def clearram_handler(event):
             """Handle /clearram command."""
-            await self.send_message(event, "🧹 *Clearing RAM cache...*", add_keyboard=False)
+            await self.send_message(event, "🧹 Membersihakn RAM cache...", add_keyboard=False)
             result = self.clear_ram()
             await self.send_message(event, f"```\n{result}\n```")
         
         @self.client.on(events.NewMessage(pattern='/network'))
         async def network_handler(event):
             """Handle /network command."""
-            await self.send_message(event, "📊 *Getting network statistics...*", add_keyboard=False)
+            await self.send_message(event, "📊Tunggu sebentar cik...", add_keyboard=False)
             result = self.get_network_stats()
             await self.send_message(event, f"```\n{result}\n```")
         
         @self.client.on(events.NewMessage(pattern='/speedtest'))
         async def speedtest_handler(event):
             """Handle /speedtest command."""
-            await self.send_message(event, "🚀 *Running speed test (this may take a minute)...*", add_keyboard=False)
+            await self.send_message(event, "🚀 Tunggu sebentar cik lagi cek speed...", add_keyboard=False)
             result = self.run_speedtest()
             await self.send_message(event, f"```\n{result}\n```")
         
@@ -557,7 +557,7 @@ class OpenWRTBot:
                 await self.send_message(event, f"📡 *Running ping test to {target}...*", add_keyboard=False)
             else:
                 # Just show a generic message, not mentioning default target
-                await self.send_message(event, f"📡 *Running ping test...*", add_keyboard=False)
+                await self.send_message(event, f"📡 Tunggu sebentar cik...", add_keyboard=False)
             
             result = self.run_ping(target)
             await self.send_message(event, f"```\n{result}\n```")
@@ -565,7 +565,7 @@ class OpenWRTBot:
         @self.client.on(events.NewMessage(pattern='/userlist'))
         async def userlist_handler(event):
             """Handle /userlist command."""
-            await self.send_message(event, "👥 *Getting user list...*", add_keyboard=False)
+            await self.send_message(event, "👥Tunggu sebentar cik...", add_keyboard=False)
             result = self.get_user_list()
             await self.send_message(event, f"```\n{result}\n```")
         
@@ -580,41 +580,41 @@ class OpenWRTBot:
             
             # Process button presses based on text
             if text == "📊 System Info":
-                await self.send_message(event, "🔍 *Getting system information...*", add_keyboard=False)
+                await self.send_message(event, "🔍 Mendapatkan Informasi...", add_keyboard=False)
                 result = self.get_overview()
                 await self.send_message(event, f"```\n{result}\n```")
             elif text == "🔄 Reboot":
                 await reboot_handler(event)
             elif text == "🧹 Clear RAM":
-                await self.send_message(event, "🧹 *Clearing RAM cache...*", add_keyboard=False)
+                await self.send_message(event, "🧹 Membersihakn RAM cache...", add_keyboard=False)
                 result = self.clear_ram()
                 await self.send_message(event, f"```\n{result}\n```")
             elif text == "🌐 Network Stats":
-                await self.send_message(event, "📊 *Getting network statistics...*", add_keyboard=False)
+                await self.send_message(event, "📊Tunggu sebentar cik...", add_keyboard=False)
                 result = self.get_network_stats()
                 await self.send_message(event, f"```\n{result}\n```")
             elif text == "🚀 Speed Test":
-                await self.send_message(event, "🚀 *Running speed test (this may take a minute)...*", add_keyboard=False)
+                await self.send_message(event, "🚀 Tunggu sebentar cik lagi cek speed...", add_keyboard=False)
                 result = self.run_speedtest()
                 await self.send_message(event, f"```\n{result}\n```")
             elif text == "📡 Ping Test":
-                await self.send_message(event, "📡 *Running ping test...*", add_keyboard=False)
+                await self.send_message(event, "📡 Tunggu sebentar cik...", add_keyboard=False)
                 result = self.run_ping()
                 await self.send_message(event, f"```\n{result}\n```")
             elif text == "👥 User List":
-                await self.send_message(event, "👥 *Getting user list...*", add_keyboard=False)
+                await self.send_message(event, "👥Tunggu sebentar cik...", add_keyboard=False)
                 result = self.get_user_list()
                 await self.send_message(event, f"```\n{result}\n```")
             elif text == "⬆️ Update Bot":
                 # Only allow admin to update
                 if not self.is_admin(event.sender_id):
-                    await self.send_message(event, "⛔ *Only admin can update the bot*")
+                    await self.send_message(event, "⛔ Hanya admin yang bisa melakukan update bot")
                     return
                 await update_handler(event)
             elif text == "🗑️ Uninstall Bot":
                 # Only allow admin to uninstall
                 if not self.is_admin(event.sender_id):
-                    await self.send_message(event, "⛔ *Only admin can uninstall the bot*")
+                    await self.send_message(event, "⛔ Hanya admin yang bisa menghapus bot")
                     return
                 await uninstall_handler(event)
         
@@ -633,7 +633,7 @@ class OpenWRTBot:
                     event.message.message == "⬆️ Update Bot" or
                     event.message.message.startswith('/uninstall') or
                     event.message.message == "🗑️ Uninstall Bot"):
-                    await self.send_message(event, "⛔ *Only admin can access this command*")
+                    await self.send_message(event, "⛔ Hanya admin yang bisa melakukan")
                     return
                     
                 # For all other commands, allow access for any user
