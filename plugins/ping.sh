@@ -47,7 +47,10 @@ else
 fi
 
 echo ""
-echo "  ✦✦✦✦✦ REVD.CLOUD ✦✦✦✦✦"
+echo " ✦✦✦✦✦ REVD.CLOUD ✦✦✦✦✦"
+echo " Telegram: @ValltzID"
+echo " Instagram: revd.cloud"
+echo " ✦✦✦✦✦✦✦✦✦✦✦✦✦✦✦✦✦✦"
 echo ""
 
 # Always ensure we have output
