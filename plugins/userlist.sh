@@ -115,6 +115,9 @@ main() {
     # Add footer
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo "✦✦✦✦✦ REVD.CLOUD ✦✦✦✦✦"
+    echo " Telegram: @ValltzID"
+    echo " Instagram: revd.cloud"
+    echo "✦✦✦✦✦✦✦✦✦✦✦✦✦✦✦✦✦✦" 
 }
 
 # Run the main function
