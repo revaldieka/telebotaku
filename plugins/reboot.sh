@@ -33,6 +33,10 @@ cat << EOF
   Please reconnect after reboot.
 
   ✦✦✦✦✦ REVD.CLOUD ✦✦✦✦✦
+    Telegram: @ValltzID
+    Instagram: revd.cloud
+  ✦✦✦✦✦✦✦✦✦✦✦✦✦✦✦✦✦✦
+
 
 EOF
 
