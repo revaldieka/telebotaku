@@ -161,7 +161,7 @@ cat << EOF
   ∑ Total:    $MONTH_TOTAL
 
   ✦✦✦✦✦ REVD.CLOUD ✦✦✦✦✦
-  Telegram: @ValltzID
+  Telegram: t.me/ValltzID
   Instagram: revd.cloud
   ✦✦✦✦✦✦✦✦✦✦✦✦✦✦✦✦✦✦
 
