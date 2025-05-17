@@ -6,7 +6,7 @@ if [ "$(id -u)" -ne 0 ]; then
 
   ✦✦✦✦✦ MEMORY CLEANER ✦✦✦✦✦
 
-  ⚠️  Permission Error
+  ⚠️  Akses ditolak
   This script must run as root
 
   ✦✦✦✦✦ REVD.CLOUD ✦✦✦✦✦
@@ -22,7 +22,7 @@ TOTAL_MEM=$(free | grep "Mem:" | awk '{printf "%.2f", $2/1024}')
 BEFORE=$(free | grep "Mem:" | awk '{printf "%.2f", $4/1024}')
 BEFORE_PERCENT=$(free | grep "Mem:" | awk '{printf "%.1f", $4*100/$2}')
 
-echo "Clearing memory cache... Please wait"
+echo "Sedang Membersihkan Memori Cache... Tunggu Sebentar"
 
 # Clear RAM cache (more thorough approach)
 sync
@@ -44,7 +44,7 @@ cat << EOF
 
   ✦✦✦✦✦ MEMORY CLEANER ✦✦✦✦✦
 
-  ✅ RAM cleared successfully
+  ✅ RAM Sudah Dibersihkan
 
   📊 Memory Status:
      • Before: $BEFORE MB ($BEFORE_PERCENT%)
@@ -54,5 +54,8 @@ cat << EOF
   💻 Total Memory: $TOTAL_MEM MB
 
   ✦✦✦✦✦ REVD.CLOUD ✦✦✦✦✦
+  Telegram: @ValltzID
+  Instagram: revd.cloud
+  ✦✦✦✦✦✦✦✦✦✦✦✦✦✦✦✦✦✦
 
 EOF
