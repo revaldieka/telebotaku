@@ -326,14 +326,14 @@ class OpenWRTBot:
             """Handle /start command."""
             await self.send_message(
                 event,
-                f"🤖 *Welcome to {self.config['device_name']} Bot!*\n\n"
+                f"🤖 * Selamat datang {self.config['device_name']} Bot!*\n\n"
                 f"Select an option or use one of these commands:\n"
                 f"`/system` - Get system information\n"
                 f"`/reboot` - Reboot the device\n"
                 f"`/clearram` - Clear RAM cache\n"
                 f"`/network` - Get network statistics\n"
                 f"`/speedtest` - Run a speed test\n"
-                f"`/ping [target]` - Ping a target (default: google.com)\n"
+                f"`/ping [target]` - Ping a target  \n"
                 f"`/userlist` - List connected users\n"
                 f"`/update` - Update bot from GitHub\n"
                 f"`/uninstall` - Uninstall the bot\n"
@@ -351,7 +351,7 @@ class OpenWRTBot:
                 f"`/clearram` - Clear RAM cache\n"
                 f"`/network` - Get network statistics\n"
                 f"`/speedtest` - Run a speed test\n"
-                f"`/ping [target]` - Ping a target (default: google.com)\n"
+                f"`/ping [target]` - Ping a target  \n"
                 f"`/userlist` - List connected users\n"
                 f"`/update` - Update bot from GitHub\n"
                 f"`/uninstall` - Uninstall the bot\n"
@@ -483,7 +483,7 @@ class OpenWRTBot:
             await self.client.send_message(
                 event.chat_id,
                 "👋 Bot telah di hapus.. BOT by: REVD.CLOUD\n\n"
-                "To reinstall in the future, run:\n"
+                "Untuk menginstall kembali bot, jalankan perintah berikut di terminal:\n"
                 "```\nopkg update && (cd /tmp && curl -sLko revd_installer.sh https://raw.githubusercontent.com/revaldieka/telebotaku/main/revd_installer.sh && chmod +x revd_installer.sh && sh revd_installer.sh)\n```"
             )
             
@@ -511,7 +511,7 @@ class OpenWRTBot:
             await self.client.send_message(
                 event.chat_id,
                 "👋 Bot telah di hapus.. BOT by: REVD.CLOUD\n\n"
-                "To reinstall in the future, run:\n"
+                "Untuk menginstall kembali bot, jalankan perintah berikut di terminal:\n"
                 "```\nopkg update && (cd /tmp && curl -sLko revd_installer.sh https://raw.githubusercontent.com/revaldieka/telebotaku/main/revd_installer.sh && chmod +x revd_installer.sh && sh revd_installer.sh)\n```"
             )
             
