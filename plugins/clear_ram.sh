@@ -54,7 +54,7 @@ cat << EOF
   💻 Total Memory: $TOTAL_MEM MB
 
   ✦✦✦✦✦ REVD.CLOUD ✦✦✦✦✦
-  Telegram: @ValltzID
+  Telegram: t.me/ValltzID
   Instagram: revd.cloud
   ✦✦✦✦✦✦✦✦✦✦✦✦✦✦✦✦✦✦
 
