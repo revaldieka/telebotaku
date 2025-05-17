@@ -98,5 +98,8 @@ cat << EOF
   Test provided by speedtest.net
 
   ✦✦✦✦✦ REVD.CLOUD ✦✦✦✦✦
+    Telegram: @ValltzID
+  Instagram: revd.cloud
+  ✦✦✦✦✦✦✦✦✦✦✦✦✦✦✦✦✦✦
 
 EOF
