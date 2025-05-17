@@ -207,5 +207,7 @@ cat << EOF
 🕒 $DATE
 
 ✦✦✦✦✦ REVD.CLOUD ✦✦✦✦✦
-
+  Telegram: @ValltzID
+  Instagram: revd.cloud
+✦✦✦✦✦✦✦✦✦✦✦✦✦✦✦✦✦✦
 EOF
