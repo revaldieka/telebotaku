@@ -153,13 +153,9 @@ Skrip uninstaller akan:
 - Memberi pilihan untuk menghapus dependensi Python
 
 
-## Bagi teman-teman yang ingin berdonasi:
-**Dana, OVO, Gopay**
-```
-088214672165
-```
-***An/ Revaldi Eka Maulana***
+
 
 ## Kredit
+Referensi Code: t.me/Tomketstore
 
 By: REVD.CLOUD
