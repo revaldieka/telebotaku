@@ -156,10 +156,8 @@ def send_notification():
         if 'default_message' in locals() and default_message:
             # Donation information
             donation_info = """
-💰 *Jika teman-teman ingin berdonasi bisa ke:*
-DANA - OVO - GOPAY
-Nomor: 088214672165
-an. Revaldi Eka Maulana.
+💰 *Terimaksih Kepada:*
+@Tomketstore - Untuk Referensi Botnya.
 """
             
             # Message to send
@@ -256,10 +254,8 @@ if [ ! -f "$ROOT_DIR/update_message.txt" ]; then
 Bot telah diperbarui dan sedang berjalan dengan normal.
 Anda dapat melanjutkan penggunaan semua fungsi bot.
 
-💰 *Jika teman-teman ingin berdonasi bisa ke:*
-DANA - OVO - GOPAY
-Nomor 088214672165
-an. Revaldi Eka Maulana.
+💰 *Terimakasih Kepada:*
+@@Tomketstore - Untuk referensi botnya.
 
 Terima kasih telah menggunakan bot ini! 🙏
 EOF
@@ -297,8 +293,6 @@ jika terjadi masalah pada versi ini silahkan restore ke versi sebelumnya.
   cp $ROOT_DIR/bot_openwrt.py.bak $ROOT_DIR/bot_openwrt.py"
 
 echo "
-💰 Jika teman-teman ingin berdonasi bisa ke:
-DANA - OVO - GOPAY
-Nomor 088214672165
-an. Revaldi Eka Maulana.
+💰 Terimakasih Kepada:
+@@Tomketstore - Untuk referensi Botnya.
 "
