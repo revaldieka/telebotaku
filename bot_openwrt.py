@@ -196,59 +196,50 @@ def get_device_info():
             'uptime': 'Unknown'
         }
 
-def get_main_menu():
-    """Generate main menu with device info."""
-    device_info = get_device_info()
-    
-    menu_text = f"""
-🤖 **{CONFIG['device_name']} Management Bot**
+def get_main_keyboard():
+    """Generate main keyboard with all available commands."""
+    keyboard = [
+        [Button.inline("📊 System Info", b"system"), Button.inline("🔄 Reboot", b"reboot")],
+        [Button.inline("🧹 Clear RAM", b"clearram"), Button.inline("🌐 Network Stats", b"network")],
+        [Button.inline("🚀 Speed Test", b"speedtest"), Button.inline("📡 Ping Test", b"ping")],
+        [Button.inline("📶 WiFi Info", b"wifi"), Button.inline("🔥 Firewall", b"firewall")],
+        [Button.inline("👥 User List", b"userlist"), Button.inline("💾 Backup", b"backup")],
+        [Button.inline("📈 Bot Stats", b"stats"), Button.inline("📋 Menu", b"menu")],
+        [Button.inline("ℹ️ Help", b"help")]
+    ]
+    return keyboard
 
-📡 **Device Information:**
-• **Hostname:** {device_info['hostname']}
-• **Version:** {device_info['version']}
-• **Uptime:** {device_info['uptime']}
+def get_admin_keyboard():
+    """Generate admin keyboard with additional commands."""
+    keyboard = [
+        [Button.inline("📊 System Info", b"system"), Button.inline("🔄 Reboot", b"reboot")],
+        [Button.inline("🧹 Clear RAM", b"clearram"), Button.inline("🌐 Network Stats", b"network")],
+        [Button.inline("🚀 Speed Test", b"speedtest"), Button.inline("📡 Ping Test", b"ping")],
+        [Button.inline("📶 WiFi Info", b"wifi"), Button.inline("🔥 Firewall", b"firewall")],
+        [Button.inline("👥 User List", b"userlist"), Button.inline("💾 Backup", b"backup")],
+        [Button.inline("📈 Bot Stats", b"stats"), Button.inline("📋 Menu", b"menu")],
+        [Button.inline("⬆️ Update Bot", b"update"), Button.inline("📜 History", b"history")],
+        [Button.inline("🗑️ Uninstall", b"uninstall"), Button.inline("ℹ️ Help", b"help")]
+    ]
+    return keyboard
 
-🔧 **Available Commands:**
-
-**📊 System Management:**
-• `/system` - System information & status
-• `/reboot` - Restart device (with confirmation)
-• `/clearram` - Clear RAM cache
-• `/backup` - Create system backup
-
-**🌐 Network Monitoring:**
-• `/network` - Network statistics (vnstat)
-• `/speedtest` - Internet speed test
-• `/ping [target]` - Ping test (default: google.com)
-• `/wifi` - WiFi information & clients
-• `/firewall` - Firewall status & rules
-• `/userlist` - Connected devices list
-
-**📈 Bot Management:**
-• `/stats` - Bot statistics & performance
-• `/menu` - Show this menu
-• `/help` - Detailed help information
-
-**🔐 Admin Commands:**
-• `/update` - Update bot from GitHub
-• `/uninstall` - Remove bot from system
-• `/history` - Command execution history
-
-**💡 Tips:**
-• Commands are case-sensitive
-• Some commands require admin privileges
-• Use `/help` for detailed command descriptions
-
-**🌐 REVD.CLOUD Services:**
-• **Website:** https://revd.cloud
-• **Telegram:** @ValltzID
-• **Instagram:** @revd.cloud
-• **Support:** Professional OpenWRT solutions
-
-**🚀 Bot Version:** Enhanced Edition v2.1
-**⚡ Powered by:** REVD.CLOUD Technology
-"""
-    return menu_text
+def get_confirmation_keyboard(action_type):
+    """Generate confirmation keyboard for destructive actions."""
+    if action_type == "reboot":
+        return [
+            [Button.inline("✅ Yes, Reboot", b"confirm_reboot"), Button.inline("❌ Cancel", b"cancel_action")]
+        ]
+    elif action_type == "update":
+        return [
+            [Button.inline("✅ Yes, Update", b"confirm_update"), Button.inline("❌ Cancel", b"cancel_action")]
+        ]
+    elif action_type == "uninstall":
+        return [
+            [Button.inline("🗑️ Delete All", b"uninstall_all")],
+            [Button.inline("💾 Keep Config", b"uninstall_keep")],
+            [Button.inline("❌ Cancel", b"cancel_action")]
+        ]
+    return []
 
 # Initialize Telegram client
 client = TelegramClient('bot_session', CONFIG['api_id'], CONFIG['api_hash'])
@@ -284,12 +275,8 @@ async def start_handler(event):
 • Network infrastructure consulting
 • 24/7 technical support
 
-**Quick Start:**
-• Type `/menu` to see all available commands
-• Type `/help` for detailed information
-• Type `/system` for device status
-
-**🚀 Ready to manage your OpenWRT device!**
+**Quick Actions:**
+Use the buttons below for quick access to all features!
 
 **Contact & Support:**
 • Website: https://revd.cloud
@@ -297,7 +284,8 @@ async def start_handler(event):
 • Instagram: @revd.cloud
 """
     
-    await event.respond(welcome_message)
+    keyboard = get_admin_keyboard() if is_admin(user_id) else get_main_keyboard()
+    await event.respond(welcome_message, buttons=keyboard)
 
 @client.on(events.NewMessage(pattern='/menu'))
 async def menu_handler(event):
@@ -311,8 +299,54 @@ async def menu_handler(event):
     
     log_command(user_id, username, "/menu")
     
-    menu_text = get_main_menu()
-    await event.respond(menu_text)
+    device_info = get_device_info()
+    
+    menu_text = f"""
+🤖 **{CONFIG['device_name']} Management Bot**
+
+📡 **Device Information:**
+• **Hostname:** {device_info['hostname']}
+• **Version:** {device_info['version']}
+• **Uptime:** {device_info['uptime']}
+
+🔧 **Available Commands:**
+
+**📊 System Management:**
+• System information & status
+• Restart device (with confirmation)
+• Clear RAM cache
+• Create system backup
+
+**🌐 Network Monitoring:**
+• Network statistics (vnstat)
+• Internet speed test
+• Ping test (default: google.com)
+• WiFi information & clients
+• Firewall status & rules
+• Connected devices list
+
+**📈 Bot Management:**
+• Bot statistics & performance
+• Show this menu
+• Detailed help information
+
+**🔐 Admin Commands:**
+• Update bot from GitHub
+• Remove bot from system
+• Command execution history
+
+**🌐 REVD.CLOUD Services:**
+• **Website:** https://revd.cloud
+• **Telegram:** @ValltzID
+• **Instagram:** @revd.cloud
+• **Support:** Professional OpenWRT solutions
+
+**🚀 Bot Version:** Enhanced Edition v2.1
+**⚡ Powered by:** REVD.CLOUD Technology
+"""
+    
+    keyboard = get_admin_keyboard() if is_admin(user_id) else get_main_keyboard()
+    await event.respond(menu_text, buttons=keyboard)
 
 @client.on(events.NewMessage(pattern='/help'))
 async def help_handler(event):
@@ -334,31 +368,31 @@ async def help_handler(event):
 📡 **Device:** {device_info['hostname']} | **Version:** {device_info['version']}
 
 **📊 System Commands:**
-• `/system` - Complete system information (CPU, RAM, temperature, network)
-• `/reboot` - Restart device with safety confirmation
-• `/clearram` - Clear system RAM cache for better performance
-• `/backup` - Create compressed system backup
+• **System Info** - Complete system information (CPU, RAM, temperature, network)
+• **Reboot** - Restart device with safety confirmation
+• **Clear RAM** - Clear system RAM cache for better performance
+• **Backup** - Create compressed system backup
 
 **🌐 Network Commands:**
-• `/network` - Network usage statistics via vnstat
-• `/speedtest` - Internet speed test (download/upload/ping)
-• `/ping [target]` - Network connectivity test (default: google.com)
-• `/wifi` - WiFi networks, clients, and signal information
-• `/firewall` - Firewall status, rules, and port forwards
-• `/userlist` - List of connected devices with details
+• **Network Stats** - Network usage statistics via vnstat
+• **Speed Test** - Internet speed test (download/upload/ping)
+• **Ping Test** - Network connectivity test (default: google.com)
+• **WiFi Info** - WiFi networks, clients, and signal information
+• **Firewall** - Firewall status, rules, and port forwards
+• **User List** - List of connected devices with details
 
 **📈 Bot Commands:**
-• `/stats` - Bot performance and usage statistics
-• `/menu` - Main menu with all commands
-• `/help` - This detailed help information
+• **Bot Stats** - Bot performance and usage statistics
+• **Menu** - Main menu with all commands
+• **Help** - This detailed help information
 
 **🔐 Admin-Only Commands:**
-• `/update` - Update bot to latest version from GitHub
-• `/uninstall` - Safely remove bot with backup options
-• `/history` - View command execution history
+• **Update Bot** - Update bot to latest version from GitHub
+• **Uninstall** - Safely remove bot with backup options
+• **History** - View command execution history
 
 **💡 Usage Tips:**
-• All commands are case-sensitive
+• Use buttons for quick access to all features
 • Some operations may take 30-60 seconds
 • Admin commands require elevated privileges
 • Bot logs all activities for security
@@ -401,40 +435,92 @@ Contact us for custom bot features, enterprise deployments, or technical consult
 **⚡ Powered by REVD.CLOUD Technology**
 """
     
-    await event.respond(help_text)
+    keyboard = get_admin_keyboard() if is_admin(user_id) else get_main_keyboard()
+    await event.respond(help_text, buttons=keyboard)
 
-@client.on(events.NewMessage(pattern='/system'))
-async def system_command(event):
-    """Handle /system command."""
+@client.on(events.CallbackQuery)
+async def callback_handler(event):
+    """Handle button callbacks."""
     user_id = event.sender_id
     username = event.sender.username or event.sender.first_name or "Unknown"
+    data = event.data.decode('utf-8')
     
     if not is_authorized(user_id):
-        await event.respond("❌ Access denied.")
+        await event.answer("❌ Access denied.", alert=True)
         return
     
-    log_command(user_id, username, "/system")
+    # Admin-only commands
+    admin_commands = ['update', 'uninstall', 'history', 'confirm_update', 'uninstall_all', 'uninstall_keep']
+    if data in admin_commands and not is_admin(user_id):
+        await event.answer("❌ Admin access required.", alert=True)
+        return
     
-    # Send processing message
+    log_command(user_id, username, f"button:{data}")
+    
+    try:
+        await event.answer("⏳ Processing...")
+        
+        if data == "system":
+            await handle_system_command(event)
+        elif data == "reboot":
+            await handle_reboot_command(event)
+        elif data == "confirm_reboot":
+            await handle_reboot_confirm(event)
+        elif data == "clearram":
+            await handle_clearram_command(event)
+        elif data == "network":
+            await handle_network_command(event)
+        elif data == "speedtest":
+            await handle_speedtest_command(event)
+        elif data == "ping":
+            await handle_ping_command(event)
+        elif data == "wifi":
+            await handle_wifi_command(event)
+        elif data == "firewall":
+            await handle_firewall_command(event)
+        elif data == "userlist":
+            await handle_userlist_command(event)
+        elif data == "backup":
+            await handle_backup_command(event)
+        elif data == "stats":
+            await handle_stats_command(event)
+        elif data == "menu":
+            await menu_handler(event)
+        elif data == "help":
+            await help_handler(event)
+        elif data == "update":
+            await handle_update_command(event)
+        elif data == "confirm_update":
+            await handle_update_confirm(event)
+        elif data == "uninstall":
+            await handle_uninstall_command(event)
+        elif data == "uninstall_all":
+            await handle_uninstall_all(event)
+        elif data == "uninstall_keep":
+            await handle_uninstall_keep(event)
+        elif data == "history":
+            await handle_history_command(event)
+        elif data == "cancel_action":
+            await handle_cancel_action(event)
+        else:
+            await event.respond("❌ Unknown command.")
+            
+    except Exception as e:
+        logger.error(f"Callback error: {str(e)}")
+        bot_stats['errors_count'] += 1
+        await event.respond(f"❌ Error processing command: {str(e)}")
+
+async def handle_system_command(event):
+    """Handle system info command."""
     processing_msg = await event.respond("⏳ **Getting system information...**\n\nPlease wait while I collect system data...")
     
     result = await run_shell_command("sh /root/REVDBOT/plugins/system.sh")
     
-    # Edit the processing message with results
-    await processing_msg.edit(f"```\n{result}\n```")
+    keyboard = get_admin_keyboard() if is_admin(event.sender_id) else get_main_keyboard()
+    await event.respond(f"```\n{result}\n```", buttons=keyboard)
 
-@client.on(events.NewMessage(pattern='/reboot'))
-async def reboot_command(event):
-    """Handle /reboot command with confirmation."""
-    user_id = event.sender_id
-    username = event.sender.username or event.sender.first_name or "Unknown"
-    
-    if not is_authorized(user_id):
-        await event.respond("❌ Access denied.")
-        return
-    
-    log_command(user_id, username, "/reboot")
-    
+async def handle_reboot_command(event):
+    """Handle reboot command with confirmation."""
     device_info = get_device_info()
     
     confirm_msg = f"""
@@ -448,182 +534,95 @@ async def reboot_command(event):
 • All active connections will be dropped
 • Services will restart automatically
 
-**To confirm reboot, type:** `/reboot confirm`
-**To cancel, ignore this message or type any other command.**
-
-**Note:** Only proceed if you're sure about rebooting the device.
+**Choose an option below:**
 """
     
-    await event.respond(confirm_msg)
+    keyboard = get_confirmation_keyboard("reboot")
+    await event.respond(confirm_msg, buttons=keyboard)
 
-@client.on(events.NewMessage(pattern='/reboot confirm'))
-async def reboot_confirm_command(event):
+async def handle_reboot_confirm(event):
     """Handle reboot confirmation."""
-    user_id = event.sender_id
-    username = event.sender.username or event.sender.first_name or "Unknown"
-    
-    if not is_authorized(user_id):
-        await event.respond("❌ Access denied.")
-        return
-    
-    log_command(user_id, username, "/reboot confirm")
-    
     device_info = get_device_info()
     
-    reboot_msg = await event.respond(f"🔄 **Rebooting {device_info['hostname']}**\n\nDevice is restarting... Please wait 1-2 minutes before reconnecting.")
+    await event.respond(f"🔄 **Rebooting {device_info['hostname']}**\n\nDevice is restarting... Please wait 1-2 minutes before reconnecting.")
     
     # Execute reboot
     await run_shell_command("sh /root/REVDBOT/plugins/reboot.sh")
 
-@client.on(events.NewMessage(pattern='/clearram'))
-async def clearram_command(event):
-    """Handle /clearram command."""
-    user_id = event.sender_id
-    username = event.sender.username or event.sender.first_name or "Unknown"
-    
-    if not is_authorized(user_id):
-        await event.respond("❌ Access denied.")
-        return
-    
-    log_command(user_id, username, "/clearram")
-    
+async def handle_clearram_command(event):
+    """Handle clear RAM command."""
     processing_msg = await event.respond("🧹 **Clearing RAM cache...**\n\nOptimizing memory usage...")
     
     result = await run_shell_command("sh /root/REVDBOT/plugins/clear_ram.sh")
-    await processing_msg.edit(f"```\n{result}\n```")
+    
+    keyboard = get_admin_keyboard() if is_admin(event.sender_id) else get_main_keyboard()
+    await event.respond(f"```\n{result}\n```", buttons=keyboard)
 
-@client.on(events.NewMessage(pattern='/network'))
-async def network_command(event):
-    """Handle /network command."""
-    user_id = event.sender_id
-    username = event.sender.username or event.sender.first_name or "Unknown"
-    
-    if not is_authorized(user_id):
-        await event.respond("❌ Access denied.")
-        return
-    
-    log_command(user_id, username, "/network")
-    
+async def handle_network_command(event):
+    """Handle network stats command."""
     processing_msg = await event.respond("📊 **Collecting network statistics...**\n\nAnalyzing network usage data...")
     
     result = await run_shell_command("sh /root/REVDBOT/plugins/vnstat.sh")
-    await processing_msg.edit(f"```\n{result}\n```")
+    
+    keyboard = get_admin_keyboard() if is_admin(event.sender_id) else get_main_keyboard()
+    await event.respond(f"```\n{result}\n```", buttons=keyboard)
 
-@client.on(events.NewMessage(pattern='/speedtest'))
-async def speedtest_command(event):
-    """Handle /speedtest command."""
-    user_id = event.sender_id
-    username = event.sender.username or event.sender.first_name or "Unknown"
-    
-    if not is_authorized(user_id):
-        await event.respond("❌ Access denied.")
-        return
-    
-    log_command(user_id, username, "/speedtest")
-    
+async def handle_speedtest_command(event):
+    """Handle speedtest command."""
     processing_msg = await event.respond("🚀 **Running Internet Speed Test**\n\nTesting download/upload speeds...\nThis may take 30-60 seconds.")
     
     result = await run_shell_command("sh /root/REVDBOT/plugins/speedtest.sh", timeout=120)
-    await processing_msg.edit(f"```\n{result}\n```")
+    
+    keyboard = get_admin_keyboard() if is_admin(event.sender_id) else get_main_keyboard()
+    await event.respond(f"```\n{result}\n```", buttons=keyboard)
 
-@client.on(events.NewMessage(pattern=r'/ping(?:\s+(.+))?'))
-async def ping_command(event):
-    """Handle /ping command with optional target."""
-    user_id = event.sender_id
-    username = event.sender.username or event.sender.first_name or "Unknown"
-    
-    if not is_authorized(user_id):
-        await event.respond("❌ Access denied.")
-        return
-    
-    target = event.pattern_match.group(1) or "google.com"
-    log_command(user_id, username, f"/ping {target}")
-    
+async def handle_ping_command(event, target="google.com"):
+    """Handle ping command."""
     processing_msg = await event.respond(f"📡 **Testing connection to {target}**\n\nSending ping packets...")
     
     result = await run_shell_command(f"sh /root/REVDBOT/plugins/ping.sh {target}")
-    await processing_msg.edit(f"```\n{result}\n```")
+    
+    keyboard = get_admin_keyboard() if is_admin(event.sender_id) else get_main_keyboard()
+    await event.respond(f"```\n{result}\n```", buttons=keyboard)
 
-@client.on(events.NewMessage(pattern='/wifi'))
-async def wifi_command(event):
-    """Handle /wifi command."""
-    user_id = event.sender_id
-    username = event.sender.username or event.sender.first_name or "Unknown"
-    
-    if not is_authorized(user_id):
-        await event.respond("❌ Access denied.")
-        return
-    
-    log_command(user_id, username, "/wifi")
-    
+async def handle_wifi_command(event):
+    """Handle WiFi info command."""
     processing_msg = await event.respond("📶 **Scanning WiFi information...**\n\nGathering wireless network data...")
     
     result = await run_shell_command("sh /root/REVDBOT/plugins/wifi.sh")
-    await processing_msg.edit(f"```\n{result}\n```")
+    
+    keyboard = get_admin_keyboard() if is_admin(event.sender_id) else get_main_keyboard()
+    await event.respond(f"```\n{result}\n```", buttons=keyboard)
 
-@client.on(events.NewMessage(pattern='/firewall'))
-async def firewall_command(event):
-    """Handle /firewall command."""
-    user_id = event.sender_id
-    username = event.sender.username or event.sender.first_name or "Unknown"
-    
-    if not is_authorized(user_id):
-        await event.respond("❌ Access denied.")
-        return
-    
-    log_command(user_id, username, "/firewall")
-    
+async def handle_firewall_command(event):
+    """Handle firewall status command."""
     processing_msg = await event.respond("🔥 **Checking firewall status...**\n\nAnalyzing security rules...")
     
     result = await run_shell_command("sh /root/REVDBOT/plugins/firewall.sh")
-    await processing_msg.edit(f"```\n{result}\n```")
+    
+    keyboard = get_admin_keyboard() if is_admin(event.sender_id) else get_main_keyboard()
+    await event.respond(f"```\n{result}\n```", buttons=keyboard)
 
-@client.on(events.NewMessage(pattern='/userlist'))
-async def userlist_command(event):
-    """Handle /userlist command."""
-    user_id = event.sender_id
-    username = event.sender.username or event.sender.first_name or "Unknown"
-    
-    if not is_authorized(user_id):
-        await event.respond("❌ Access denied.")
-        return
-    
-    log_command(user_id, username, "/userlist")
-    
+async def handle_userlist_command(event):
+    """Handle user list command."""
     processing_msg = await event.respond("👥 **Scanning connected devices...**\n\nListing active network clients...")
     
     result = await run_shell_command("sh /root/REVDBOT/plugins/userlist.sh")
-    await processing_msg.edit(f"```\n{result}\n```")
+    
+    keyboard = get_admin_keyboard() if is_admin(event.sender_id) else get_main_keyboard()
+    await event.respond(f"```\n{result}\n```", buttons=keyboard)
 
-@client.on(events.NewMessage(pattern='/backup'))
-async def backup_command(event):
-    """Handle /backup command."""
-    user_id = event.sender_id
-    username = event.sender.username or event.sender.first_name or "Unknown"
-    
-    if not is_authorized(user_id):
-        await event.respond("❌ Access denied.")
-        return
-    
-    log_command(user_id, username, "/backup")
-    
+async def handle_backup_command(event):
+    """Handle backup command."""
     processing_msg = await event.respond("💾 **Creating System Backup**\n\nBacking up configuration and settings...")
     
     result = await run_shell_command("sh /root/REVDBOT/plugins/backup.sh", timeout=60)
-    await processing_msg.edit(f"```\n{result}\n```")
+    
+    keyboard = get_admin_keyboard() if is_admin(event.sender_id) else get_main_keyboard()
+    await event.respond(f"```\n{result}\n```", buttons=keyboard)
 
-@client.on(events.NewMessage(pattern='/stats'))
-async def stats_command(event):
-    """Handle /stats command."""
-    user_id = event.sender_id
-    username = event.sender.username or event.sender.first_name or "Unknown"
-    
-    if not is_authorized(user_id):
-        await event.respond("❌ Access denied.")
-        return
-    
-    log_command(user_id, username, "/stats")
-    
+async def handle_stats_command(event):
+    """Handle bot statistics command."""
     uptime = datetime.now() - bot_stats['start_time']
     uptime_str = str(uptime).split('.')[0]  # Remove microseconds
     
@@ -675,21 +674,11 @@ async def stats_command(event):
 **📞 Contact:** @ValltzID | https://revd.cloud
 """
     
-    await event.respond(stats_text)
+    keyboard = get_admin_keyboard() if is_admin(event.sender_id) else get_main_keyboard()
+    await event.respond(stats_text, buttons=keyboard)
 
-# Admin-only commands
-@client.on(events.NewMessage(pattern='/update'))
-async def update_command(event):
-    """Handle /update command (admin only)."""
-    user_id = event.sender_id
-    username = event.sender.username or event.sender.first_name or "Unknown"
-    
-    if not is_admin(user_id):
-        await event.respond("❌ **Admin Access Required**\n\nThis command is restricted to administrators only.")
-        return
-    
-    log_command(user_id, username, "/update")
-    
+async def handle_update_command(event):
+    """Handle update command (admin only)."""
     confirm_msg = f"""
 ⬆️ **Bot Update Confirmation**
 
@@ -704,42 +693,22 @@ async def update_command(event):
 
 **Warning:** Bot will be offline for 1-2 minutes during update.
 
-**To confirm update, type:** `/update confirm`
-**To cancel, ignore this message.**
-
-**Note:** Your configuration will be preserved.
+**Choose an option below:**
 """
     
-    await event.respond(confirm_msg)
+    keyboard = get_confirmation_keyboard("update")
+    await event.respond(confirm_msg, buttons=keyboard)
 
-@client.on(events.NewMessage(pattern='/update confirm'))
-async def update_confirm_command(event):
+async def handle_update_confirm(event):
     """Handle update confirmation."""
-    if not is_admin(event.sender_id):
-        await event.respond("❌ Admin access required.")
-        return
-    
-    username = event.sender.username or event.sender.first_name or "Unknown"
-    log_command(event.sender_id, username, "/update confirm")
-    
     update_msg = await event.respond("⬆️ **Starting Bot Update**\n\nDownloading latest version from GitHub...\nPlease wait...")
     
     # Execute update
     result = await run_shell_command("sh /root/REVDBOT/plugins/update.sh", timeout=120)
-    await update_msg.edit(f"```\n{result}\n```")
+    await event.respond(f"```\n{result}\n```")
 
-@client.on(events.NewMessage(pattern='/uninstall'))
-async def uninstall_command(event):
-    """Handle /uninstall command (admin only)."""
-    user_id = event.sender_id
-    username = event.sender.username or event.sender.first_name or "Unknown"
-    
-    if not is_admin(user_id):
-        await event.respond("❌ **Admin Access Required**\n\nThis command is restricted to administrators only.")
-        return
-    
-    log_command(user_id, username, "/uninstall")
-    
+async def handle_uninstall_command(event):
+    """Handle uninstall command (admin only)."""
     device_info = get_device_info()
     
     confirm_msg = f"""
@@ -751,9 +720,9 @@ async def uninstall_command(event):
 ⚠️ **WARNING:** This will completely remove the bot from your system!
 
 **Uninstall Options:**
-• **Complete Removal:** `/uninstall confirm delete` - Remove everything
-• **Keep Config:** `/uninstall confirm keep` - Save configuration for future reinstall
-• **Cancel:** Ignore this message
+• **Delete All** - Remove everything
+• **Keep Config** - Save configuration for future reinstall
+• **Cancel** - Abort uninstall
 
 **What will be removed:**
 • Bot service and startup scripts
@@ -761,45 +730,31 @@ async def uninstall_command(event):
 • Log files and session data
 • Service configuration
 
-**Note:** Configuration backup will be saved to `/etc/revd_backup/` if you choose "keep" option.
+**Note:** Configuration backup will be saved to `/etc/revd_backup/` if you choose "Keep Config" option.
 """
     
-    await event.respond(confirm_msg)
+    keyboard = get_confirmation_keyboard("uninstall")
+    await event.respond(confirm_msg, buttons=keyboard)
 
-@client.on(events.NewMessage(pattern='/uninstall confirm (delete|keep)'))
-async def uninstall_confirm_command(event):
-    """Handle uninstall confirmation."""
-    if not is_admin(event.sender_id):
-        await event.respond("❌ Admin access required.")
-        return
+async def handle_uninstall_all(event):
+    """Handle complete uninstall."""
+    uninstall_msg = await event.respond("🗑️ **Complete Bot Removal**\n\nRemoving all bot files and configuration...\nGoodbye! 👋")
     
-    username = event.sender.username or event.sender.first_name or "Unknown"
-    option = event.pattern_match.group(1)
-    log_command(event.sender_id, username, f"/uninstall confirm {option}")
-    
-    if option == "keep":
-        uninstall_msg = await event.respond("💾 **Uninstalling with Configuration Backup**\n\nSaving configuration and removing bot...\nYou can reinstall later with saved settings!")
-        result = await run_shell_command("sh /root/REVDBOT/plugins/uninstall.sh y")
-    else:
-        uninstall_msg = await event.respond("🗑️ **Complete Bot Removal**\n\nRemoving all bot files and configuration...\nGoodbye! 👋")
-        result = await run_shell_command("sh /root/REVDBOT/plugins/uninstall.sh n")
-    
-    await uninstall_msg.edit(f"```\n{result}\n```")
+    result = await run_shell_command("sh /root/REVDBOT/plugins/uninstall.sh n")
+    await event.respond(f"```\n{result}\n```")
 
-@client.on(events.NewMessage(pattern='/history'))
-async def history_command(event):
-    """Handle /history command (admin only)."""
-    user_id = event.sender_id
-    username = event.sender.username or event.sender.first_name or "Unknown"
+async def handle_uninstall_keep(event):
+    """Handle uninstall with config backup."""
+    uninstall_msg = await event.respond("💾 **Uninstalling with Configuration Backup**\n\nSaving configuration and removing bot...\nYou can reinstall later with saved settings!")
     
-    if not is_admin(user_id):
-        await event.respond("❌ **Admin Access Required**\n\nThis command is restricted to administrators only.")
-        return
-    
-    log_command(user_id, username, "/history")
-    
+    result = await run_shell_command("sh /root/REVDBOT/plugins/uninstall.sh y")
+    await event.respond(f"```\n{result}\n```")
+
+async def handle_history_command(event):
+    """Handle command history (admin only)."""
     if not bot_stats['command_history']:
-        await event.respond("📜 **Command History**\n\nNo commands have been executed yet.")
+        keyboard = get_admin_keyboard()
+        await event.respond("📜 **Command History**\n\nNo commands have been executed yet.", buttons=keyboard)
         return
     
     history_text = "📜 **Command Execution History** (Last 10)\n\n"
@@ -814,7 +769,198 @@ async def history_command(event):
     history_text += f"**📊 Total Commands Executed:** {bot_stats['commands_executed']}\n"
     history_text += f"**⚡ Bot Uptime:** {str(datetime.now() - bot_stats['start_time']).split('.')[0]}"
     
-    await event.respond(history_text)
+    keyboard = get_admin_keyboard()
+    await event.respond(history_text, buttons=keyboard)
+
+async def handle_cancel_action(event):
+    """Handle action cancellation."""
+    keyboard = get_admin_keyboard() if is_admin(event.sender_id) else get_main_keyboard()
+    await event.respond("❌ **Action Cancelled**\n\nOperation has been cancelled.", buttons=keyboard)
+
+# Text command handlers for direct commands
+@client.on(events.NewMessage(pattern='/system'))
+async def system_text_command(event):
+    """Handle /system text command."""
+    user_id = event.sender_id
+    username = event.sender.username or event.sender.first_name or "Unknown"
+    
+    if not is_authorized(user_id):
+        await event.respond("❌ Access denied.")
+        return
+    
+    log_command(user_id, username, "/system")
+    await handle_system_command(event)
+
+@client.on(events.NewMessage(pattern=r'/ping(?:\s+(.+))?'))
+async def ping_text_command(event):
+    """Handle /ping text command with optional target."""
+    user_id = event.sender_id
+    username = event.sender.username or event.sender.first_name or "Unknown"
+    
+    if not is_authorized(user_id):
+        await event.respond("❌ Access denied.")
+        return
+    
+    target = event.pattern_match.group(1) or "google.com"
+    log_command(user_id, username, f"/ping {target}")
+    await handle_ping_command(event, target)
+
+@client.on(events.NewMessage(pattern='/reboot'))
+async def reboot_text_command(event):
+    """Handle /reboot text command."""
+    user_id = event.sender_id
+    username = event.sender.username or event.sender.first_name or "Unknown"
+    
+    if not is_authorized(user_id):
+        await event.respond("❌ Access denied.")
+        return
+    
+    log_command(user_id, username, "/reboot")
+    await handle_reboot_command(event)
+
+@client.on(events.NewMessage(pattern='/clearram'))
+async def clearram_text_command(event):
+    """Handle /clearram text command."""
+    user_id = event.sender_id
+    username = event.sender.username or event.sender.first_name or "Unknown"
+    
+    if not is_authorized(user_id):
+        await event.respond("❌ Access denied.")
+        return
+    
+    log_command(user_id, username, "/clearram")
+    await handle_clearram_command(event)
+
+@client.on(events.NewMessage(pattern='/network'))
+async def network_text_command(event):
+    """Handle /network text command."""
+    user_id = event.sender_id
+    username = event.sender.username or event.sender.first_name or "Unknown"
+    
+    if not is_authorized(user_id):
+        await event.respond("❌ Access denied.")
+        return
+    
+    log_command(user_id, username, "/network")
+    await handle_network_command(event)
+
+@client.on(events.NewMessage(pattern='/speedtest'))
+async def speedtest_text_command(event):
+    """Handle /speedtest text command."""
+    user_id = event.sender_id
+    username = event.sender.username or event.sender.first_name or "Unknown"
+    
+    if not is_authorized(user_id):
+        await event.respond("❌ Access denied.")
+        return
+    
+    log_command(user_id, username, "/speedtest")
+    await handle_speedtest_command(event)
+
+@client.on(events.NewMessage(pattern='/wifi'))
+async def wifi_text_command(event):
+    """Handle /wifi text command."""
+    user_id = event.sender_id
+    username = event.sender.username or event.sender.first_name or "Unknown"
+    
+    if not is_authorized(user_id):
+        await event.respond("❌ Access denied.")
+        return
+    
+    log_command(user_id, username, "/wifi")
+    await handle_wifi_command(event)
+
+@client.on(events.NewMessage(pattern='/firewall'))
+async def firewall_text_command(event):
+    """Handle /firewall text command."""
+    user_id = event.sender_id
+    username = event.sender.username or event.sender.first_name or "Unknown"
+    
+    if not is_authorized(user_id):
+        await event.respond("❌ Access denied.")
+        return
+    
+    log_command(user_id, username, "/firewall")
+    await handle_firewall_command(event)
+
+@client.on(events.NewMessage(pattern='/userlist'))
+async def userlist_text_command(event):
+    """Handle /userlist text command."""
+    user_id = event.sender_id
+    username = event.sender.username or event.sender.first_name or "Unknown"
+    
+    if not is_authorized(user_id):
+        await event.respond("❌ Access denied.")
+        return
+    
+    log_command(user_id, username, "/userlist")
+    await handle_userlist_command(event)
+
+@client.on(events.NewMessage(pattern='/backup'))
+async def backup_text_command(event):
+    """Handle /backup text command."""
+    user_id = event.sender_id
+    username = event.sender.username or event.sender.first_name or "Unknown"
+    
+    if not is_authorized(user_id):
+        await event.respond("❌ Access denied.")
+        return
+    
+    log_command(user_id, username, "/backup")
+    await handle_backup_command(event)
+
+@client.on(events.NewMessage(pattern='/stats'))
+async def stats_text_command(event):
+    """Handle /stats text command."""
+    user_id = event.sender_id
+    username = event.sender.username or event.sender.first_name or "Unknown"
+    
+    if not is_authorized(user_id):
+        await event.respond("❌ Access denied.")
+        return
+    
+    log_command(user_id, username, "/stats")
+    await handle_stats_command(event)
+
+# Admin-only text commands
+@client.on(events.NewMessage(pattern='/update'))
+async def update_text_command(event):
+    """Handle /update text command (admin only)."""
+    user_id = event.sender_id
+    username = event.sender.username or event.sender.first_name or "Unknown"
+    
+    if not is_admin(user_id):
+        await event.respond("❌ **Admin Access Required**\n\nThis command is restricted to administrators only.")
+        return
+    
+    log_command(user_id, username, "/update")
+    await handle_update_command(event)
+
+@client.on(events.NewMessage(pattern='/uninstall'))
+async def uninstall_text_command(event):
+    """Handle /uninstall text command (admin only)."""
+    user_id = event.sender_id
+    username = event.sender.username or event.sender.first_name or "Unknown"
+    
+    if not is_admin(user_id):
+        await event.respond("❌ **Admin Access Required**\n\nThis command is restricted to administrators only.")
+        return
+    
+    log_command(user_id, username, "/uninstall")
+    await handle_uninstall_command(event)
+
+@client.on(events.NewMessage(pattern='/history'))
+async def history_text_command(event):
+    """Handle /history text command (admin only)."""
+    user_id = event.sender_id
+    username = event.sender.username or event.sender.first_name or "Unknown"
+    
+    if not is_admin(user_id):
+        await event.respond("❌ **Admin Access Required**\n\nThis command is restricted to administrators only.")
+        return
+    
+    log_command(user_id, username, "/history")
+    await handle_history_command(event)
 
 # Handle unauthorized messages
 @client.on(events.NewMessage)
@@ -886,10 +1032,11 @@ Professional OpenWRT management solutions now available!
 **📞 Contact:** @ValltzID | https://revd.cloud
 
 **🚀 Bot is ready to receive commands!**
-Type `/menu` to see all available commands.
+Type `/start` to begin or use the buttons for quick access.
 """
         
-        await client.send_message(CONFIG['admin_id'], startup_message)
+        keyboard = get_admin_keyboard()
+        await client.send_message(CONFIG['admin_id'], startup_message, buttons=keyboard)
         logger.info("Startup notification sent to admin")
         
     except Exception as e:
