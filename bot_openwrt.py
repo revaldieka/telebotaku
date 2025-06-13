@@ -187,9 +187,9 @@ def get_main_keyboard():
         [Button.inline("🚀 Speed Test", b"speedtest"), Button.inline("📡 Ping Test", b"ping")],
         [Button.inline("📶 WiFi Info", b"wifi"), Button.inline("🔥 Firewall", b"firewall")],
         [Button.inline("👥 User List", b"userlist"), Button.inline("💾 Backup", b"backup")],
-        [Button.inline("📈 Bot Stats", b"stats"), Button.inline("📋 Menu", b"menu")],
-        [Button.inline("⬆️ Update Bot", b"update"), Button.inline("📜 History", b"history")],
-        [Button.inline("🗑️ Uninstall", b"uninstall"), Button.inline("ℹ️ Help", b"help")]
+        [Button.inline("📈 Bot Stats", b"stats"), Button.inline("⬆️ Update Bot", b"update")],
+        [Button.inline("📜 History", b"history"), Button.inline("🗑️ Uninstall", b"uninstall")],
+        [Button.inline("ℹ️ Help", b"help")]
     ]
     return keyboard
 
@@ -351,7 +351,6 @@ async def help_handler(event):
 
 **📈 Bot Commands:**
 • **Bot Stats** - Bot performance and usage statistics
-• **Menu** - Main menu with all commands
 • **Help** - This detailed help information
 
 **🔐 Admin Commands:**
@@ -446,8 +445,6 @@ async def callback_handler(event):
             await handle_backup_command(event)
         elif data == "stats":
             await handle_stats_command(event)
-        elif data == "menu":
-            await menu_handler(event)
         elif data == "help":
             await help_handler(event)
         elif data == "update":
