@@ -909,10 +909,10 @@ async def history_text_command(event):
     log_command(user_id, username, "/history")
     await handle_history_command(event)
 
-# Handle unauthorized messages
+# Handle unauthorized messages - ONLY for non-command messages
 @client.on(events.NewMessage)
 async def unauthorized_handler(event):
-    """Handle messages from unauthorized users."""
+    """Handle messages from unauthorized users - only for non-command messages."""
     user_id = event.sender_id
     username = event.sender.username or event.sender.first_name or "Unknown"
     
@@ -920,16 +920,22 @@ async def unauthorized_handler(event):
     if is_admin(user_id):
         return
     
-    # Skip if message starts with known commands (already handled)
-    message_text = event.text.lower()
-    known_commands = ['/start', '/help', '/menu', '/system', '/reboot', '/clearram', 
-                     '/network', '/speedtest', '/ping', '/wifi', '/firewall', 
-                     '/userlist', '/backup', '/stats', '/update', '/uninstall', '/history']
-    
-    if any(message_text.startswith(cmd) for cmd in known_commands):
+    # Skip if message is empty or None
+    if not event.text:
         return
     
-    logger.warning(f"Unauthorized message from {username} ({user_id}): {event.text}")
+    message_text = event.text.strip()
+    
+    # Skip if message is empty after stripping
+    if not message_text:
+        return
+    
+    # Skip if message starts with known commands (already handled by specific handlers)
+    if message_text.startswith('/'):
+        return
+    
+    # Only respond to actual text messages from unauthorized users
+    logger.warning(f"Unauthorized message from {username} ({user_id}): {message_text}")
     await event.respond(
         f"❌ **Access Denied**\n\n"
         f"This bot is restricted to the administrator only.\n"
