@@ -31,7 +31,6 @@ def load_config() -> Dict[str, Any]:
         'bot_token': '',
         'admin_id': 0,
         'device_name': 'OpenWRT',
-        'allowed_users': [],
         'auto_backup': True,
         'notification_enabled': True
     }
@@ -58,11 +57,6 @@ def load_config() -> Dict[str, Any]:
             config['api_hash'] = parser['Telegram'].get('api_hash')
             config['bot_token'] = parser['Telegram'].get('bot_token')
             config['admin_id'] = int(parser['Telegram'].get('admin_id'))
-            
-            # Parse allowed users (comma-separated)
-            allowed_users_str = parser['Telegram'].get('allowed_users', '')
-            if allowed_users_str:
-                config['allowed_users'] = [int(uid.strip()) for uid in allowed_users_str.split(',') if uid.strip().isdigit()]
                 
         # OpenWRT section
         if 'OpenWRT' in parser:
@@ -73,7 +67,6 @@ def load_config() -> Dict[str, Any]:
         logger.info(f"Configuration loaded successfully")
         logger.info(f"Admin ID: {config['admin_id']}")
         logger.info(f"Device name: {config['device_name']}")
-        logger.info(f"Allowed users: {len(config['allowed_users'])}")
         return config
         
     except Exception as e:
@@ -89,13 +82,8 @@ bot_stats = {
     'commands_executed': 0,
     'errors_count': 0,
     'last_command': None,
-    'command_history': [],
-    'user_activity': {}
+    'command_history': []
 }
-
-def is_authorized(user_id: int) -> bool:
-    """Check if user is authorized to use the bot."""
-    return user_id == CONFIG['admin_id'] or user_id in CONFIG['allowed_users']
 
 def is_admin(user_id: int) -> bool:
     """Check if user is admin."""
@@ -118,11 +106,6 @@ def log_command(user_id: int, username: str, command: str):
     # Keep only last 50 commands
     if len(bot_stats['command_history']) > 50:
         bot_stats['command_history'] = bot_stats['command_history'][-50:]
-    
-    # Update user activity
-    if user_id not in bot_stats['user_activity']:
-        bot_stats['user_activity'][user_id] = {'username': username, 'count': 0}
-    bot_stats['user_activity'][user_id]['count'] += 1
     
     logger.info(f"Command executed: {command} by {username} ({user_id})")
 
@@ -205,19 +188,6 @@ def get_main_keyboard():
         [Button.inline("📶 WiFi Info", b"wifi"), Button.inline("🔥 Firewall", b"firewall")],
         [Button.inline("👥 User List", b"userlist"), Button.inline("💾 Backup", b"backup")],
         [Button.inline("📈 Bot Stats", b"stats"), Button.inline("📋 Menu", b"menu")],
-        [Button.inline("ℹ️ Help", b"help")]
-    ]
-    return keyboard
-
-def get_admin_keyboard():
-    """Generate admin keyboard with additional commands."""
-    keyboard = [
-        [Button.inline("📊 System Info", b"system"), Button.inline("🔄 Reboot", b"reboot")],
-        [Button.inline("🧹 Clear RAM", b"clearram"), Button.inline("🌐 Network Stats", b"network")],
-        [Button.inline("🚀 Speed Test", b"speedtest"), Button.inline("📡 Ping Test", b"ping")],
-        [Button.inline("📶 WiFi Info", b"wifi"), Button.inline("🔥 Firewall", b"firewall")],
-        [Button.inline("👥 User List", b"userlist"), Button.inline("💾 Backup", b"backup")],
-        [Button.inline("📈 Bot Stats", b"stats"), Button.inline("📋 Menu", b"menu")],
         [Button.inline("⬆️ Update Bot", b"update"), Button.inline("📜 History", b"history")],
         [Button.inline("🗑️ Uninstall", b"uninstall"), Button.inline("ℹ️ Help", b"help")]
     ]
@@ -250,8 +220,8 @@ async def start_handler(event):
     user_id = event.sender_id
     username = event.sender.username or event.sender.first_name or "Unknown"
     
-    if not is_authorized(user_id):
-        await event.respond("❌ **Access Denied**\n\nYou are not authorized to use this bot.")
+    if not is_admin(user_id):
+        await event.respond("❌ **Access Denied**\n\nThis bot is restricted to the administrator only.")
         logger.warning(f"Unauthorized access attempt by {username} ({user_id})")
         return
     
@@ -266,7 +236,7 @@ async def start_handler(event):
 🔧 **Device**: {device_info['hostname']}
 📊 **Version**: {device_info['version']}
 ⏱️ **Uptime**: {device_info['uptime']}
-👤 **User**: {username}
+👤 **Admin**: {username}
 🆔 **Your ID**: `{user_id}`
 
 **🌐 REVD.CLOUD Services:**
@@ -284,7 +254,7 @@ Use the buttons below for quick access to all features!
 • Instagram: @revd.cloud
 """
     
-    keyboard = get_admin_keyboard() if is_admin(user_id) else get_main_keyboard()
+    keyboard = get_main_keyboard()
     await event.respond(welcome_message, buttons=keyboard)
 
 @client.on(events.NewMessage(pattern='/menu'))
@@ -293,7 +263,7 @@ async def menu_handler(event):
     user_id = event.sender_id
     username = event.sender.username or event.sender.first_name or "Unknown"
     
-    if not is_authorized(user_id):
+    if not is_admin(user_id):
         await event.respond("❌ Access denied.")
         return
     
@@ -329,8 +299,6 @@ async def menu_handler(event):
 • Bot statistics & performance
 • Show this menu
 • Detailed help information
-
-**🔐 Admin Commands:**
 • Update bot from GitHub
 • Remove bot from system
 • Command execution history
@@ -345,7 +313,7 @@ async def menu_handler(event):
 **⚡ Powered by:** REVD.CLOUD Technology
 """
     
-    keyboard = get_admin_keyboard() if is_admin(user_id) else get_main_keyboard()
+    keyboard = get_main_keyboard()
     await event.respond(menu_text, buttons=keyboard)
 
 @client.on(events.NewMessage(pattern='/help'))
@@ -354,7 +322,7 @@ async def help_handler(event):
     user_id = event.sender_id
     username = event.sender.username or event.sender.first_name or "Unknown"
     
-    if not is_authorized(user_id):
+    if not is_admin(user_id):
         await event.respond("❌ Access denied.")
         return
     
@@ -386,7 +354,7 @@ async def help_handler(event):
 • **Menu** - Main menu with all commands
 • **Help** - This detailed help information
 
-**🔐 Admin-Only Commands:**
+**🔐 Admin Commands:**
 • **Update Bot** - Update bot to latest version from GitHub
 • **Uninstall** - Safely remove bot with backup options
 • **History** - View command execution history
@@ -394,11 +362,11 @@ async def help_handler(event):
 **💡 Usage Tips:**
 • Use buttons for quick access to all features
 • Some operations may take 30-60 seconds
-• Admin commands require elevated privileges
 • Bot logs all activities for security
+• All commands require admin authorization
 
 **🛡️ Security Features:**
-• Multi-user authorization system
+• Admin-only authorization system
 • Command logging and audit trail
 • Session management and timeout protection
 • Unauthorized access monitoring
@@ -435,7 +403,7 @@ Contact us for custom bot features, enterprise deployments, or technical consult
 **⚡ Powered by REVD.CLOUD Technology**
 """
     
-    keyboard = get_admin_keyboard() if is_admin(user_id) else get_main_keyboard()
+    keyboard = get_main_keyboard()
     await event.respond(help_text, buttons=keyboard)
 
 @client.on(events.CallbackQuery)
@@ -445,14 +413,8 @@ async def callback_handler(event):
     username = event.sender.username or event.sender.first_name or "Unknown"
     data = event.data.decode('utf-8')
     
-    if not is_authorized(user_id):
+    if not is_admin(user_id):
         await event.answer("❌ Access denied.", alert=True)
-        return
-    
-    # Admin-only commands
-    admin_commands = ['update', 'uninstall', 'history', 'confirm_update', 'uninstall_all', 'uninstall_keep']
-    if data in admin_commands and not is_admin(user_id):
-        await event.answer("❌ Admin access required.", alert=True)
         return
     
     log_command(user_id, username, f"button:{data}")
@@ -516,7 +478,7 @@ async def handle_system_command(event):
     
     result = await run_shell_command("sh /root/REVDBOT/plugins/system.sh")
     
-    keyboard = get_admin_keyboard() if is_admin(event.sender_id) else get_main_keyboard()
+    keyboard = get_main_keyboard()
     await event.respond(f"```\n{result}\n```", buttons=keyboard)
 
 async def handle_reboot_command(event):
@@ -555,7 +517,7 @@ async def handle_clearram_command(event):
     
     result = await run_shell_command("sh /root/REVDBOT/plugins/clear_ram.sh")
     
-    keyboard = get_admin_keyboard() if is_admin(event.sender_id) else get_main_keyboard()
+    keyboard = get_main_keyboard()
     await event.respond(f"```\n{result}\n```", buttons=keyboard)
 
 async def handle_network_command(event):
@@ -564,7 +526,7 @@ async def handle_network_command(event):
     
     result = await run_shell_command("sh /root/REVDBOT/plugins/vnstat.sh")
     
-    keyboard = get_admin_keyboard() if is_admin(event.sender_id) else get_main_keyboard()
+    keyboard = get_main_keyboard()
     await event.respond(f"```\n{result}\n```", buttons=keyboard)
 
 async def handle_speedtest_command(event):
@@ -573,7 +535,7 @@ async def handle_speedtest_command(event):
     
     result = await run_shell_command("sh /root/REVDBOT/plugins/speedtest.sh", timeout=120)
     
-    keyboard = get_admin_keyboard() if is_admin(event.sender_id) else get_main_keyboard()
+    keyboard = get_main_keyboard()
     await event.respond(f"```\n{result}\n```", buttons=keyboard)
 
 async def handle_ping_command(event, target="google.com"):
@@ -582,7 +544,7 @@ async def handle_ping_command(event, target="google.com"):
     
     result = await run_shell_command(f"sh /root/REVDBOT/plugins/ping.sh {target}")
     
-    keyboard = get_admin_keyboard() if is_admin(event.sender_id) else get_main_keyboard()
+    keyboard = get_main_keyboard()
     await event.respond(f"```\n{result}\n```", buttons=keyboard)
 
 async def handle_wifi_command(event):
@@ -591,7 +553,7 @@ async def handle_wifi_command(event):
     
     result = await run_shell_command("sh /root/REVDBOT/plugins/wifi.sh")
     
-    keyboard = get_admin_keyboard() if is_admin(event.sender_id) else get_main_keyboard()
+    keyboard = get_main_keyboard()
     await event.respond(f"```\n{result}\n```", buttons=keyboard)
 
 async def handle_firewall_command(event):
@@ -600,7 +562,7 @@ async def handle_firewall_command(event):
     
     result = await run_shell_command("sh /root/REVDBOT/plugins/firewall.sh")
     
-    keyboard = get_admin_keyboard() if is_admin(event.sender_id) else get_main_keyboard()
+    keyboard = get_main_keyboard()
     await event.respond(f"```\n{result}\n```", buttons=keyboard)
 
 async def handle_userlist_command(event):
@@ -609,7 +571,7 @@ async def handle_userlist_command(event):
     
     result = await run_shell_command("sh /root/REVDBOT/plugins/userlist.sh")
     
-    keyboard = get_admin_keyboard() if is_admin(event.sender_id) else get_main_keyboard()
+    keyboard = get_main_keyboard()
     await event.respond(f"```\n{result}\n```", buttons=keyboard)
 
 async def handle_backup_command(event):
@@ -618,7 +580,7 @@ async def handle_backup_command(event):
     
     result = await run_shell_command("sh /root/REVDBOT/plugins/backup.sh", timeout=60)
     
-    keyboard = get_admin_keyboard() if is_admin(event.sender_id) else get_main_keyboard()
+    keyboard = get_main_keyboard()
     await event.respond(f"```\n{result}\n```", buttons=keyboard)
 
 async def handle_stats_command(event):
@@ -636,7 +598,6 @@ async def handle_stats_command(event):
 • **Version:** Enhanced Edition v2.1
 • **Commands Executed:** {bot_stats['commands_executed']}
 • **Errors Encountered:** {bot_stats['errors_count']}
-• **Active Users:** {len(bot_stats['user_activity'])}
 
 **📡 Device Information:**
 • **Device:** {device_info['hostname']}
@@ -655,16 +616,6 @@ async def handle_stats_command(event):
         stats_text += "• No commands executed yet\n"
     
     stats_text += f"""
-**👥 User Activity:**
-"""
-    
-    if bot_stats['user_activity']:
-        for user_id, activity in list(bot_stats['user_activity'].items())[:5]:
-            stats_text += f"• **{activity['username']}:** {activity['count']} commands\n"
-    else:
-        stats_text += "• No user activity recorded\n"
-    
-    stats_text += f"""
 **🌐 REVD.CLOUD Services:**
 • Professional OpenWRT solutions
 • Custom bot development
@@ -674,11 +625,11 @@ async def handle_stats_command(event):
 **📞 Contact:** @ValltzID | https://revd.cloud
 """
     
-    keyboard = get_admin_keyboard() if is_admin(event.sender_id) else get_main_keyboard()
+    keyboard = get_main_keyboard()
     await event.respond(stats_text, buttons=keyboard)
 
 async def handle_update_command(event):
-    """Handle update command (admin only)."""
+    """Handle update command."""
     confirm_msg = f"""
 ⬆️ **Bot Update Confirmation**
 
@@ -708,7 +659,7 @@ async def handle_update_confirm(event):
     await event.respond(f"```\n{result}\n```")
 
 async def handle_uninstall_command(event):
-    """Handle uninstall command (admin only)."""
+    """Handle uninstall command."""
     device_info = get_device_info()
     
     confirm_msg = f"""
@@ -751,9 +702,9 @@ async def handle_uninstall_keep(event):
     await event.respond(f"```\n{result}\n```")
 
 async def handle_history_command(event):
-    """Handle command history (admin only)."""
+    """Handle command history."""
     if not bot_stats['command_history']:
-        keyboard = get_admin_keyboard()
+        keyboard = get_main_keyboard()
         await event.respond("📜 **Command History**\n\nNo commands have been executed yet.", buttons=keyboard)
         return
     
@@ -769,12 +720,12 @@ async def handle_history_command(event):
     history_text += f"**📊 Total Commands Executed:** {bot_stats['commands_executed']}\n"
     history_text += f"**⚡ Bot Uptime:** {str(datetime.now() - bot_stats['start_time']).split('.')[0]}"
     
-    keyboard = get_admin_keyboard()
+    keyboard = get_main_keyboard()
     await event.respond(history_text, buttons=keyboard)
 
 async def handle_cancel_action(event):
     """Handle action cancellation."""
-    keyboard = get_admin_keyboard() if is_admin(event.sender_id) else get_main_keyboard()
+    keyboard = get_main_keyboard()
     await event.respond("❌ **Action Cancelled**\n\nOperation has been cancelled.", buttons=keyboard)
 
 # Text command handlers for direct commands
@@ -784,7 +735,7 @@ async def system_text_command(event):
     user_id = event.sender_id
     username = event.sender.username or event.sender.first_name or "Unknown"
     
-    if not is_authorized(user_id):
+    if not is_admin(user_id):
         await event.respond("❌ Access denied.")
         return
     
@@ -797,7 +748,7 @@ async def ping_text_command(event):
     user_id = event.sender_id
     username = event.sender.username or event.sender.first_name or "Unknown"
     
-    if not is_authorized(user_id):
+    if not is_admin(user_id):
         await event.respond("❌ Access denied.")
         return
     
@@ -811,7 +762,7 @@ async def reboot_text_command(event):
     user_id = event.sender_id
     username = event.sender.username or event.sender.first_name or "Unknown"
     
-    if not is_authorized(user_id):
+    if not is_admin(user_id):
         await event.respond("❌ Access denied.")
         return
     
@@ -824,7 +775,7 @@ async def clearram_text_command(event):
     user_id = event.sender_id
     username = event.sender.username or event.sender.first_name or "Unknown"
     
-    if not is_authorized(user_id):
+    if not is_admin(user_id):
         await event.respond("❌ Access denied.")
         return
     
@@ -837,7 +788,7 @@ async def network_text_command(event):
     user_id = event.sender_id
     username = event.sender.username or event.sender.first_name or "Unknown"
     
-    if not is_authorized(user_id):
+    if not is_admin(user_id):
         await event.respond("❌ Access denied.")
         return
     
@@ -850,7 +801,7 @@ async def speedtest_text_command(event):
     user_id = event.sender_id
     username = event.sender.username or event.sender.first_name or "Unknown"
     
-    if not is_authorized(user_id):
+    if not is_admin(user_id):
         await event.respond("❌ Access denied.")
         return
     
@@ -863,7 +814,7 @@ async def wifi_text_command(event):
     user_id = event.sender_id
     username = event.sender.username or event.sender.first_name or "Unknown"
     
-    if not is_authorized(user_id):
+    if not is_admin(user_id):
         await event.respond("❌ Access denied.")
         return
     
@@ -876,7 +827,7 @@ async def firewall_text_command(event):
     user_id = event.sender_id
     username = event.sender.username or event.sender.first_name or "Unknown"
     
-    if not is_authorized(user_id):
+    if not is_admin(user_id):
         await event.respond("❌ Access denied.")
         return
     
@@ -889,7 +840,7 @@ async def userlist_text_command(event):
     user_id = event.sender_id
     username = event.sender.username or event.sender.first_name or "Unknown"
     
-    if not is_authorized(user_id):
+    if not is_admin(user_id):
         await event.respond("❌ Access denied.")
         return
     
@@ -902,7 +853,7 @@ async def backup_text_command(event):
     user_id = event.sender_id
     username = event.sender.username or event.sender.first_name or "Unknown"
     
-    if not is_authorized(user_id):
+    if not is_admin(user_id):
         await event.respond("❌ Access denied.")
         return
     
@@ -915,22 +866,21 @@ async def stats_text_command(event):
     user_id = event.sender_id
     username = event.sender.username or event.sender.first_name or "Unknown"
     
-    if not is_authorized(user_id):
+    if not is_admin(user_id):
         await event.respond("❌ Access denied.")
         return
     
     log_command(user_id, username, "/stats")
     await handle_stats_command(event)
 
-# Admin-only text commands
 @client.on(events.NewMessage(pattern='/update'))
 async def update_text_command(event):
-    """Handle /update text command (admin only)."""
+    """Handle /update text command."""
     user_id = event.sender_id
     username = event.sender.username or event.sender.first_name or "Unknown"
     
     if not is_admin(user_id):
-        await event.respond("❌ **Admin Access Required**\n\nThis command is restricted to administrators only.")
+        await event.respond("❌ **Admin Access Required**\n\nThis command is restricted to the administrator only.")
         return
     
     log_command(user_id, username, "/update")
@@ -938,12 +888,12 @@ async def update_text_command(event):
 
 @client.on(events.NewMessage(pattern='/uninstall'))
 async def uninstall_text_command(event):
-    """Handle /uninstall text command (admin only)."""
+    """Handle /uninstall text command."""
     user_id = event.sender_id
     username = event.sender.username or event.sender.first_name or "Unknown"
     
     if not is_admin(user_id):
-        await event.respond("❌ **Admin Access Required**\n\nThis command is restricted to administrators only.")
+        await event.respond("❌ **Admin Access Required**\n\nThis command is restricted to the administrator only.")
         return
     
     log_command(user_id, username, "/uninstall")
@@ -951,12 +901,12 @@ async def uninstall_text_command(event):
 
 @client.on(events.NewMessage(pattern='/history'))
 async def history_text_command(event):
-    """Handle /history text command (admin only)."""
+    """Handle /history text command."""
     user_id = event.sender_id
     username = event.sender.username or event.sender.first_name or "Unknown"
     
     if not is_admin(user_id):
-        await event.respond("❌ **Admin Access Required**\n\nThis command is restricted to administrators only.")
+        await event.respond("❌ **Admin Access Required**\n\nThis command is restricted to the administrator only.")
         return
     
     log_command(user_id, username, "/history")
@@ -970,7 +920,7 @@ async def unauthorized_handler(event):
     username = event.sender.username or event.sender.first_name or "Unknown"
     
     # Skip if user is authorized
-    if is_authorized(user_id):
+    if is_admin(user_id):
         return
     
     # Skip if message starts with known commands (already handled)
@@ -985,8 +935,8 @@ async def unauthorized_handler(event):
     logger.warning(f"Unauthorized message from {username} ({user_id}): {event.text}")
     await event.respond(
         f"❌ **Access Denied**\n\n"
-        f"You are not authorized to use this bot.\n"
-        f"Contact the administrator for access.\n\n"
+        f"This bot is restricted to the administrator only.\n"
+        f"Contact the device owner for access.\n\n"
         f"**🌐 REVD.CLOUD Services:**\n"
         f"For professional OpenWRT solutions and custom bot development:\n"
         f"• Website: https://revd.cloud\n"
@@ -1018,7 +968,6 @@ async def send_startup_notification():
 
 **⚙️ Configuration:**
 • **Admin ID:** {CONFIG['admin_id']}
-• **Allowed Users:** {len(CONFIG['allowed_users'])}
 • **Auto Backup:** {'✅' if CONFIG['auto_backup'] else '❌'}
 • **Notifications:** {'✅' if CONFIG['notification_enabled'] else '❌'}
 
@@ -1035,7 +984,7 @@ Professional OpenWRT management solutions now available!
 Type `/start` to begin or use the buttons for quick access.
 """
         
-        keyboard = get_admin_keyboard()
+        keyboard = get_main_keyboard()
         await client.send_message(CONFIG['admin_id'], startup_message, buttons=keyboard)
         logger.info("Startup notification sent to admin")
         
