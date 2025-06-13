@@ -25,24 +25,10 @@ ROOT_DIR="/root/REVDBOT"
 PLUGINS_DIR="$ROOT_DIR/plugins"
 GITHUB_REPO="https://github.com/revaldieka/telebotaku.git"
 
-# Create root directory if it doesn't exist with proper error handling
-echo "📁 Memeriksa dan membuat direktori $ROOT_DIR..."
+# Create root directory if it doesn't exist
 if [ ! -d "$ROOT_DIR" ]; then
-    echo "Membuat direktori $ROOT_DIR..."
-    if ! mkdir -p "$ROOT_DIR"; then
-        echo "❌ Gagal membuat direktori $ROOT_DIR"
-        echo "Periksa izin akses dan ruang disk yang tersedia."
-        exit 1
-    fi
-    echo "✅ Direktori $ROOT_DIR berhasil dibuat"
-else
-    echo "✅ Direktori $ROOT_DIR sudah ada"
-fi
-
-# Verify directory was created successfully
-if [ ! -d "$ROOT_DIR" ]; then
-    echo "❌ Direktori $ROOT_DIR tidak dapat diakses setelah pembuatan"
-    exit 1
+    echo "📁 Membuat direktori $ROOT_DIR..."
+    mkdir -p "$ROOT_DIR"
 fi
 
 # Install dependencies
@@ -72,39 +58,21 @@ fi
 echo "Menginstal paket Python yang diperlukan..."
 pip3 install telethon configparser asyncio paramiko speedtest-cli
 
-# Clone the repository with better error handling
+# Clone the repository
 echo "📥 Mengkloning repository dari GitHub..."
-cd "$ROOT_DIR" || {
-    echo "❌ Tidak dapat mengakses direktori $ROOT_DIR"
-    exit 1
-}
-
 if [ -d "$ROOT_DIR/.git" ]; then
     echo "Repository sudah ada, melakukan pull untuk pembaruan..."
-    if ! git pull; then
+    cd "$ROOT_DIR" && git pull
+    if [ $? -ne 0 ]; then
         echo "❌ Gagal memperbarui repository. Mencoba clone ulang..."
-        # Remove all contents but preserve the directory
-        rm -rf "$ROOT_DIR"/.* "$ROOT_DIR"/* 2>/dev/null
-        if ! git clone "$GITHUB_REPO" .; then
-            echo "❌ Gagal mengkloning repository GitHub."
-            echo "Periksa koneksi internet atau ketersediaan repository."
-            exit 1
-        fi
+        rm -rf "$ROOT_DIR"/*
+        git clone "$GITHUB_REPO" "$ROOT_DIR"
     fi
 else
-    # Clone into current directory (which is ROOT_DIR)
-    if ! git clone "$GITHUB_REPO" .; then
+    git clone "$GITHUB_REPO" "$ROOT_DIR"
+    if [ $? -ne 0 ]; then
         echo "❌ Gagal mengkloning repository GitHub."
         echo "Periksa koneksi internet atau ketersediaan repository."
-        exit 1
-    fi
-fi
-
-# Verify the directory structure after cloning
-if [ ! -d "$ROOT_DIR" ]; then
-    echo "❌ Direktori $ROOT_DIR hilang setelah cloning. Membuat ulang..."
-    if ! mkdir -p "$ROOT_DIR"; then
-        echo "❌ Gagal membuat ulang direktori $ROOT_DIR"
         exit 1
     fi
 fi
@@ -112,10 +80,7 @@ fi
 # Make sure the plugins directory exists
 if [ ! -d "$PLUGINS_DIR" ]; then
     echo "📁 Membuat direktori plugins..."
-    if ! mkdir -p "$PLUGINS_DIR"; then
-        echo "❌ Gagal membuat direktori plugins"
-        exit 1
-    fi
+    mkdir -p "$PLUGINS_DIR"
 fi
 
 # Make all scripts in plugins directory executable
@@ -163,13 +128,6 @@ SCRIPT_PATH=$ROOT_DIR/bot_openwrt.py
 LOG_FILE=/var/log/revd_bot.log
 
 start_service() {
-    # Check if root directory exists
-    if [ ! -d "$ROOT_DIR" ]; then
-        echo "Direktori bot tidak ditemukan di $ROOT_DIR"
-        logger -t revd "Direktori bot tidak ditemukan di $ROOT_DIR"
-        return 1
-    fi
-    
     # Check if script exists
     if [ ! -f "\$SCRIPT_PATH" ]; then
         echo "Skrip bot tidak ditemukan di \$SCRIPT_PATH"
@@ -334,18 +292,8 @@ done
 read -p "Device Name [default: OpenWRT | REVD.CLOUD]: " device_name
 device_name=${device_name:-"OpenWRT | REVD.CLOUD"}
 
-# Create or update config.ini with directory verification
+# Create or update config.ini
 echo "📝 Membuat config.ini dengan kredensial yang dimasukkan..."
-
-# Ensure the ROOT_DIR still exists before creating config
-if [ ! -d "$ROOT_DIR" ]; then
-    echo "⚠️ Direktori $ROOT_DIR hilang. Membuat ulang..."
-    if ! mkdir -p "$ROOT_DIR"; then
-        echo "❌ Gagal membuat direktori $ROOT_DIR untuk config.ini"
-        exit 1
-    fi
-fi
-
 cat > "$ROOT_DIR/config.ini" << EOF
 [Telegram]
 api_id = $api_id
@@ -358,25 +306,6 @@ device_name = $device_name
 EOF
 
 echo "✅ File config.ini berhasil dibuat."
-
-# Final verification before starting service
-echo "🔍 Melakukan verifikasi akhir..."
-if [ ! -d "$ROOT_DIR" ]; then
-    echo "❌ Direktori $ROOT_DIR tidak ada. Instalasi gagal."
-    exit 1
-fi
-
-if [ ! -f "$ROOT_DIR/bot_openwrt.py" ]; then
-    echo "❌ File bot utama tidak ditemukan. Instalasi gagal."
-    exit 1
-fi
-
-if [ ! -f "$ROOT_DIR/config.ini" ]; then
-    echo "❌ File konfigurasi tidak ditemukan. Instalasi gagal."
-    exit 1
-fi
-
-echo "✅ Verifikasi berhasil. Semua file dan direktori tersedia."
 
 # Enable and start service
 echo "🔄 Mengaktifkan dan memulai layanan bot..."
@@ -398,4 +327,4 @@ fi
 # Show final instructions
 echo ""
 echo "✅ Instalasi selesai!"
-echo "Tinggal /start bot telegram nya cik"
+echo "Tinggal /strart bot telegram nya cik"
