@@ -6,10 +6,12 @@ import subprocess
 import asyncio
 import json
 import time
+import sqlite3
 from pathlib import Path
 from telethon import TelegramClient, events, Button
 from telethon.tl.custom import Button as TelethonButton
 from telethon.errors import FloodWaitError
+from telethon.sessions import StringSession
 from typing import Dict, Any, Optional, Union
 from datetime import datetime, timedelta
 
@@ -23,6 +25,36 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+
+def clean_session_files():
+    """Clean up any existing session files to prevent database lock."""
+    try:
+        session_files = [
+            '/root/REVDBOT/bot_session.session',
+            '/root/REVDBOT/bot_session.session-journal',
+            '/root/bot_session.session',
+            '/root/bot_session.session-journal'
+        ]
+        
+        for session_file in session_files:
+            if os.path.exists(session_file):
+                try:
+                    os.remove(session_file)
+                    logger.info(f"Removed session file: {session_file}")
+                except Exception as e:
+                    logger.warning(f"Could not remove {session_file}: {e}")
+        
+        # Also clean any .session files in current directory
+        for file in os.listdir('/root/REVDBOT'):
+            if file.endswith('.session') or file.endswith('.session-journal'):
+                try:
+                    os.remove(os.path.join('/root/REVDBOT', file))
+                    logger.info(f"Removed session file: {file}")
+                except Exception as e:
+                    logger.warning(f"Could not remove {file}: {e}")
+                    
+    except Exception as e:
+        logger.error(f"Error cleaning session files: {e}")
 
 def load_config() -> Dict[str, Any]:
     """Load configuration from config.ini with enhanced validation."""
@@ -73,6 +105,9 @@ def load_config() -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Error loading config: {str(e)}")
         raise
+
+# Clean session files before loading config
+clean_session_files()
 
 # Load configuration
 CONFIG = load_config()
@@ -320,8 +355,25 @@ def get_confirmation_keyboard(action_type):
         ]
     return []
 
-# Initialize Telegram client
-client = TelegramClient('bot_session', CONFIG['api_id'], CONFIG['api_hash'])
+# Create session with proper error handling
+def create_session():
+    """Create a new session with proper cleanup."""
+    try:
+        # Use a unique session name with timestamp
+        session_name = f"revd_bot_{int(time.time())}"
+        session_path = f"/root/REVDBOT/{session_name}"
+        
+        # Make sure directory exists
+        os.makedirs("/root/REVDBOT", exist_ok=True)
+        
+        return session_path
+    except Exception as e:
+        logger.error(f"Error creating session: {e}")
+        return "revd_bot_fallback"
+
+# Initialize Telegram client with proper session handling
+session_name = create_session()
+client = TelegramClient(session_name, CONFIG['api_id'], CONFIG['api_hash'])
 
 @client.on(events.NewMessage(pattern='/start'))
 async def start_handler(event):
@@ -1251,8 +1303,23 @@ async def main():
         logger.info(f"Device: {CONFIG['device_name']}")
         logger.info(f"Admin ID: {CONFIG['admin_id']}")
         
-        # Start the client
-        await client.start(bot_token=CONFIG['bot_token'])
+        # Clean any existing session files before starting
+        clean_session_files()
+        
+        # Start the client with retry mechanism
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                await client.start(bot_token=CONFIG['bot_token'])
+                break
+            except Exception as e:
+                logger.error(f"Attempt {attempt + 1} failed: {e}")
+                if attempt < max_retries - 1:
+                    logger.info("Cleaning session files and retrying...")
+                    clean_session_files()
+                    await asyncio.sleep(5)
+                else:
+                    raise
         
         # Send startup notification
         await send_startup_notification()
@@ -1271,6 +1338,8 @@ async def main():
         raise
     finally:
         logger.info("Bot shutting down...")
+        # Clean session files on shutdown
+        clean_session_files()
 
 if __name__ == '__main__':
     asyncio.run(main())
