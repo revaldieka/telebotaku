@@ -97,11 +97,8 @@ class OpenWRTBot:
             "vnstat.sh", 
             "system.sh",
             "userlist.sh",
-            "wifi.sh",
-            "firewall.sh",
-            "backup.sh",
-            "update.sh",
-            "uninstall.sh"
+            "update.sh",  # Added update.sh to required scripts
+            "uninstall.sh"  # Added uninstall.sh to required scripts
         ]
         
     async def init_client(self):
@@ -136,9 +133,8 @@ class OpenWRTBot:
             [Button.text("📊 System Info", resize=True), Button.text("🔄 Reboot", resize=True)],
             [Button.text("🧹 Clear RAM", resize=True), Button.text("🌐 Network Stats", resize=True)],
             [Button.text("🚀 Speed Test", resize=True), Button.text("📡 Ping Test", resize=True)],
-            [Button.text("📶 WiFi Info", resize=True), Button.text("🔥 Firewall", resize=True)],
-            [Button.text("👥 User List", resize=True), Button.text("💾 Backup", resize=True)],
-            [Button.text("⬆️ Update Bot", resize=True), Button.text("🗑️ Uninstall Bot", resize=True)]
+            [Button.text("👥 User List", resize=True), Button.text("⬆️ Update Bot", resize=True)],
+            [Button.text("🗑️ Uninstall Bot", resize=True)]  # Added Uninstall Bot button
         ]
     
     async def send_message(self, event, text, buttons=None, add_keyboard=True):
@@ -293,30 +289,6 @@ class OpenWRTBot:
             logger.error(f"User list failed: {str(e)}")
             return f"❌ Failed to get user list: {str(e)}"
     
-    def get_wifi_info(self) -> str:
-        """Get WiFi information."""
-        try:
-            return self.run_script("wifi.sh")
-        except Exception as e:
-            logger.error(f"WiFi info failed: {str(e)}")
-            return f"❌ Failed to get WiFi information: {str(e)}"
-    
-    def get_firewall_status(self) -> str:
-        """Get firewall status."""
-        try:
-            return self.run_script("firewall.sh")
-        except Exception as e:
-            logger.error(f"Firewall status failed: {str(e)}")
-            return f"❌ Failed to get firewall status: {str(e)}"
-    
-    def create_backup(self) -> str:
-        """Create system backup."""
-        try:
-            return self.run_script("backup.sh")
-        except Exception as e:
-            logger.error(f"Backup failed: {str(e)}")
-            return f"❌ Backup failed: {str(e)}"
-    
     def update_bot(self) -> str:
         """Update bot from GitHub repository."""
         try:
@@ -354,18 +326,15 @@ class OpenWRTBot:
             """Handle /start command."""
             await self.send_message(
                 event,
-                f"🤖 *Selamat datang {self.config['device_name']} Bot!*\n\n"
+                f"🤖 * Selamat datang {self.config['device_name']} Bot!*\n\n"
                 f"Select an option or use one of these commands:\n"
                 f"`/system` - Get system information\n"
                 f"`/reboot` - Reboot the device\n"
                 f"`/clearram` - Clear RAM cache\n"
                 f"`/network` - Get network statistics\n"
                 f"`/speedtest` - Run a speed test\n"
-                f"`/ping [target]` - Ping a target\n"
-                f"`/wifi` - Get WiFi information\n"
-                f"`/firewall` - Get firewall status\n"
+                f"`/ping [target]` - Ping a target  \n"
                 f"`/userlist` - List connected users\n"
-                f"`/backup` - Create system backup\n"
                 f"`/update` - Update bot from GitHub\n"
                 f"`/uninstall` - Uninstall the bot\n"
                 f"`/help` - Show this help message"
@@ -382,11 +351,8 @@ class OpenWRTBot:
                 f"`/clearram` - Clear RAM cache\n"
                 f"`/network` - Get network statistics\n"
                 f"`/speedtest` - Run a speed test\n"
-                f"`/ping [target]` - Ping a target\n"
-                f"`/wifi` - Get WiFi information\n"
-                f"`/firewall` - Get firewall status\n"
+                f"`/ping [target]` - Ping a target  \n"
                 f"`/userlist` - List connected users\n"
-                f"`/backup` - Create system backup\n"
                 f"`/update` - Update bot from GitHub\n"
                 f"`/uninstall` - Uninstall the bot\n"
                 f"`/help` - Show this help message"
@@ -397,27 +363,6 @@ class OpenWRTBot:
             """Handle /system command."""
             await self.send_message(event, "🔍 Mendapatkan Informasi...", add_keyboard=False)
             result = self.get_overview()
-            await self.send_message(event, f"```\n{result}\n```")
-        
-        @self.client.on(events.NewMessage(pattern='/wifi'))
-        async def wifi_handler(event):
-            """Handle /wifi command."""
-            await self.send_message(event, "📶 Mendapatkan informasi WiFi...", add_keyboard=False)
-            result = self.get_wifi_info()
-            await self.send_message(event, f"```\n{result}\n```")
-        
-        @self.client.on(events.NewMessage(pattern='/firewall'))
-        async def firewall_handler(event):
-            """Handle /firewall command."""
-            await self.send_message(event, "🔥 Mendapatkan status firewall...", add_keyboard=False)
-            result = self.get_firewall_status()
-            await self.send_message(event, f"```\n{result}\n```")
-        
-        @self.client.on(events.NewMessage(pattern='/backup'))
-        async def backup_handler(event):
-            """Handle /backup command."""
-            await self.send_message(event, "💾 Membuat backup sistem...", add_keyboard=False)
-            result = self.create_backup()
             await self.send_message(event, f"```\n{result}\n```")
         
         @self.client.on(events.NewMessage(pattern='/reboot'))
@@ -656,21 +601,9 @@ class OpenWRTBot:
                 await self.send_message(event, "📡 Tunggu sebentar cik...", add_keyboard=False)
                 result = self.run_ping()
                 await self.send_message(event, f"```\n{result}\n```")
-            elif text == "📶 WiFi Info":
-                await self.send_message(event, "📶 Mendapatkan informasi WiFi...", add_keyboard=False)
-                result = self.get_wifi_info()
-                await self.send_message(event, f"```\n{result}\n```")
-            elif text == "🔥 Firewall":
-                await self.send_message(event, "🔥 Mendapatkan status firewall...", add_keyboard=False)
-                result = self.get_firewall_status()
-                await self.send_message(event, f"```\n{result}\n```")
             elif text == "👥 User List":
                 await self.send_message(event, "👥Tunggu sebentar cik...", add_keyboard=False)
                 result = self.get_user_list()
-                await self.send_message(event, f"```\n{result}\n```")
-            elif text == "💾 Backup":
-                await self.send_message(event, "💾 Membuat backup sistem...", add_keyboard=False)
-                result = self.create_backup()
                 await self.send_message(event, f"```\n{result}\n```")
             elif text == "⬆️ Update Bot":
                 # Only allow admin to update
