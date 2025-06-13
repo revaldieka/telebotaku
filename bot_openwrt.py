@@ -189,18 +189,47 @@ async def safe_respond(event, message, buttons=None, **kwargs):
 async def run_shell_command(command: str, timeout: int = 30) -> str:
     """Execute shell command with timeout and error handling."""
     try:
+        logger.info(f"Executing command: {command}")
+        
+        # Ensure the command is properly formatted
+        if not command.startswith('sh '):
+            command = f"sh {command}"
+        
+        # Check if script file exists
+        if '/root/REVDBOT/plugins/' in command:
+            script_path = command.split('sh ')[1].split()[0]
+            if not os.path.exists(script_path):
+                logger.error(f"Script not found: {script_path}")
+                return f"❌ Script not found: {script_path}"
+            
+            # Make sure script is executable
+            os.chmod(script_path, 0o755)
+        
         process = await asyncio.create_subprocess_shell(
             command,
             stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
+            stderr=asyncio.subprocess.PIPE,
+            cwd='/root/REVDBOT'
         )
         
         stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=timeout)
         
+        stdout_text = stdout.decode('utf-8', errors='ignore').strip()
+        stderr_text = stderr.decode('utf-8', errors='ignore').strip()
+        
+        logger.info(f"Command exit code: {process.returncode}")
+        if stdout_text:
+            logger.info(f"Command stdout: {stdout_text[:200]}...")
+        if stderr_text:
+            logger.warning(f"Command stderr: {stderr_text[:200]}...")
+        
         if process.returncode == 0:
-            return stdout.decode('utf-8', errors='ignore').strip()
+            if stdout_text:
+                return stdout_text
+            else:
+                return "✅ Command executed successfully (no output)"
         else:
-            error_msg = stderr.decode('utf-8', errors='ignore').strip()
+            error_msg = stderr_text or "Unknown error occurred"
             logger.error(f"Command failed: {command}, Error: {error_msg}")
             return f"❌ Command failed: {error_msg}"
             
@@ -216,7 +245,10 @@ def get_device_info():
     """Get device information for display."""
     try:
         # Get hostname
-        hostname = subprocess.check_output("uci get system.@system[0].hostname 2>/dev/null || echo 'Unknown'", shell=True).decode().strip()
+        try:
+            hostname = subprocess.check_output("uci get system.@system[0].hostname 2>/dev/null || echo 'Unknown'", shell=True).decode().strip()
+        except:
+            hostname = "Unknown"
         
         # Get OpenWRT version
         try:
@@ -568,12 +600,31 @@ async def callback_handler(event):
 
 async def handle_system_command(event):
     """Handle system info command."""
-    processing_msg = await safe_respond(event, "⏳ **Getting system information...**\n\nPlease wait while I collect system data...")
-    
-    result = await run_shell_command("sh /root/REVDBOT/plugins/system.sh")
-    
-    keyboard = get_main_keyboard()
-    await safe_respond(event, f"```\n{result}\n```", buttons=keyboard)
+    try:
+        # Send processing message
+        processing_msg = await safe_respond(event, "⏳ **Getting system information...**\n\nPlease wait while I collect system data...")
+        
+        # Execute the system script
+        script_path = "/root/REVDBOT/plugins/system.sh"
+        
+        # Check if script exists
+        if not os.path.exists(script_path):
+            await safe_respond(event, f"❌ System script not found at {script_path}")
+            return
+        
+        # Make script executable
+        os.chmod(script_path, 0o755)
+        
+        # Run the script
+        result = await run_shell_command(f"sh {script_path}")
+        
+        # Send result with keyboard
+        keyboard = get_main_keyboard()
+        await safe_respond(event, f"```\n{result}\n```", buttons=keyboard)
+        
+    except Exception as e:
+        logger.error(f"Error in handle_system_command: {str(e)}")
+        await safe_respond(event, f"❌ Error getting system info: {str(e)}")
 
 async def handle_reboot_command(event):
     """Handle reboot command with confirmation."""
@@ -603,79 +654,180 @@ async def handle_reboot_confirm(event):
     await safe_respond(event, f"🔄 **Rebooting {device_info['hostname']}**\n\nDevice is restarting... Please wait 1-2 minutes before reconnecting.")
     
     # Execute reboot
-    await run_shell_command("sh /root/REVDBOT/plugins/reboot.sh")
+    script_path = "/root/REVDBOT/plugins/reboot.sh"
+    if os.path.exists(script_path):
+        os.chmod(script_path, 0o755)
+        await run_shell_command(f"sh {script_path}")
+    else:
+        await run_shell_command("reboot")
 
 async def handle_clearram_command(event):
     """Handle clear RAM command."""
-    processing_msg = await safe_respond(event, "🧹 **Clearing RAM cache...**\n\nOptimizing memory usage...")
-    
-    result = await run_shell_command("sh /root/REVDBOT/plugins/clear_ram.sh")
-    
-    keyboard = get_main_keyboard()
-    await safe_respond(event, f"```\n{result}\n```", buttons=keyboard)
+    try:
+        processing_msg = await safe_respond(event, "🧹 **Clearing RAM cache...**\n\nOptimizing memory usage...")
+        
+        script_path = "/root/REVDBOT/plugins/clear_ram.sh"
+        
+        if not os.path.exists(script_path):
+            await safe_respond(event, f"❌ Clear RAM script not found at {script_path}")
+            return
+        
+        os.chmod(script_path, 0o755)
+        result = await run_shell_command(f"sh {script_path}")
+        
+        keyboard = get_main_keyboard()
+        await safe_respond(event, f"```\n{result}\n```", buttons=keyboard)
+        
+    except Exception as e:
+        logger.error(f"Error in handle_clearram_command: {str(e)}")
+        await safe_respond(event, f"❌ Error clearing RAM: {str(e)}")
 
 async def handle_network_command(event):
     """Handle network stats command."""
-    processing_msg = await safe_respond(event, "📊 **Collecting network statistics...**\n\nAnalyzing network usage data...")
-    
-    result = await run_shell_command("sh /root/REVDBOT/plugins/vnstat.sh")
-    
-    keyboard = get_main_keyboard()
-    await safe_respond(event, f"```\n{result}\n```", buttons=keyboard)
+    try:
+        processing_msg = await safe_respond(event, "📊 **Collecting network statistics...**\n\nAnalyzing network usage data...")
+        
+        script_path = "/root/REVDBOT/plugins/vnstat.sh"
+        
+        if not os.path.exists(script_path):
+            await safe_respond(event, f"❌ Network stats script not found at {script_path}")
+            return
+        
+        os.chmod(script_path, 0o755)
+        result = await run_shell_command(f"sh {script_path}")
+        
+        keyboard = get_main_keyboard()
+        await safe_respond(event, f"```\n{result}\n```", buttons=keyboard)
+        
+    except Exception as e:
+        logger.error(f"Error in handle_network_command: {str(e)}")
+        await safe_respond(event, f"❌ Error getting network stats: {str(e)}")
 
 async def handle_speedtest_command(event):
     """Handle speedtest command."""
-    processing_msg = await safe_respond(event, "🚀 **Running Internet Speed Test**\n\nTesting download/upload speeds...\nThis may take 30-60 seconds.")
-    
-    result = await run_shell_command("sh /root/REVDBOT/plugins/speedtest.sh", timeout=120)
-    
-    keyboard = get_main_keyboard()
-    await safe_respond(event, f"```\n{result}\n```", buttons=keyboard)
+    try:
+        processing_msg = await safe_respond(event, "🚀 **Running Internet Speed Test**\n\nTesting download/upload speeds...\nThis may take 30-60 seconds.")
+        
+        script_path = "/root/REVDBOT/plugins/speedtest.sh"
+        
+        if not os.path.exists(script_path):
+            await safe_respond(event, f"❌ Speed test script not found at {script_path}")
+            return
+        
+        os.chmod(script_path, 0o755)
+        result = await run_shell_command(f"sh {script_path}", timeout=120)
+        
+        keyboard = get_main_keyboard()
+        await safe_respond(event, f"```\n{result}\n```", buttons=keyboard)
+        
+    except Exception as e:
+        logger.error(f"Error in handle_speedtest_command: {str(e)}")
+        await safe_respond(event, f"❌ Error running speed test: {str(e)}")
 
 async def handle_ping_command(event, target="google.com"):
     """Handle ping command."""
-    processing_msg = await safe_respond(event, f"📡 **Testing connection to {target}**\n\nSending ping packets...")
-    
-    result = await run_shell_command(f"sh /root/REVDBOT/plugins/ping.sh {target}")
-    
-    keyboard = get_main_keyboard()
-    await safe_respond(event, f"```\n{result}\n```", buttons=keyboard)
+    try:
+        processing_msg = await safe_respond(event, f"📡 **Testing connection to {target}**\n\nSending ping packets...")
+        
+        script_path = "/root/REVDBOT/plugins/ping.sh"
+        
+        if not os.path.exists(script_path):
+            await safe_respond(event, f"❌ Ping script not found at {script_path}")
+            return
+        
+        os.chmod(script_path, 0o755)
+        result = await run_shell_command(f"sh {script_path} {target}")
+        
+        keyboard = get_main_keyboard()
+        await safe_respond(event, f"```\n{result}\n```", buttons=keyboard)
+        
+    except Exception as e:
+        logger.error(f"Error in handle_ping_command: {str(e)}")
+        await safe_respond(event, f"❌ Error running ping test: {str(e)}")
 
 async def handle_wifi_command(event):
     """Handle WiFi info command."""
-    processing_msg = await safe_respond(event, "📶 **Scanning WiFi information...**\n\nGathering wireless network data...")
-    
-    result = await run_shell_command("sh /root/REVDBOT/plugins/wifi.sh")
-    
-    keyboard = get_main_keyboard()
-    await safe_respond(event, f"```\n{result}\n```", buttons=keyboard)
+    try:
+        processing_msg = await safe_respond(event, "📶 **Scanning WiFi information...**\n\nGathering wireless network data...")
+        
+        script_path = "/root/REVDBOT/plugins/wifi.sh"
+        
+        if not os.path.exists(script_path):
+            await safe_respond(event, f"❌ WiFi script not found at {script_path}")
+            return
+        
+        os.chmod(script_path, 0o755)
+        result = await run_shell_command(f"sh {script_path}")
+        
+        keyboard = get_main_keyboard()
+        await safe_respond(event, f"```\n{result}\n```", buttons=keyboard)
+        
+    except Exception as e:
+        logger.error(f"Error in handle_wifi_command: {str(e)}")
+        await safe_respond(event, f"❌ Error getting WiFi info: {str(e)}")
 
 async def handle_firewall_command(event):
     """Handle firewall status command."""
-    processing_msg = await safe_respond(event, "🔥 **Checking firewall status...**\n\nAnalyzing security rules...")
-    
-    result = await run_shell_command("sh /root/REVDBOT/plugins/firewall.sh")
-    
-    keyboard = get_main_keyboard()
-    await safe_respond(event, f"```\n{result}\n```", buttons=keyboard)
+    try:
+        processing_msg = await safe_respond(event, "🔥 **Checking firewall status...**\n\nAnalyzing security rules...")
+        
+        script_path = "/root/REVDBOT/plugins/firewall.sh"
+        
+        if not os.path.exists(script_path):
+            await safe_respond(event, f"❌ Firewall script not found at {script_path}")
+            return
+        
+        os.chmod(script_path, 0o755)
+        result = await run_shell_command(f"sh {script_path}")
+        
+        keyboard = get_main_keyboard()
+        await safe_respond(event, f"```\n{result}\n```", buttons=keyboard)
+        
+    except Exception as e:
+        logger.error(f"Error in handle_firewall_command: {str(e)}")
+        await safe_respond(event, f"❌ Error getting firewall status: {str(e)}")
 
 async def handle_userlist_command(event):
     """Handle user list command."""
-    processing_msg = await safe_respond(event, "👥 **Scanning connected devices...**\n\nListing active network clients...")
-    
-    result = await run_shell_command("sh /root/REVDBOT/plugins/userlist.sh")
-    
-    keyboard = get_main_keyboard()
-    await safe_respond(event, f"```\n{result}\n```", buttons=keyboard)
+    try:
+        processing_msg = await safe_respond(event, "👥 **Scanning connected devices...**\n\nListing active network clients...")
+        
+        script_path = "/root/REVDBOT/plugins/userlist.sh"
+        
+        if not os.path.exists(script_path):
+            await safe_respond(event, f"❌ User list script not found at {script_path}")
+            return
+        
+        os.chmod(script_path, 0o755)
+        result = await run_shell_command(f"sh {script_path}")
+        
+        keyboard = get_main_keyboard()
+        await safe_respond(event, f"```\n{result}\n```", buttons=keyboard)
+        
+    except Exception as e:
+        logger.error(f"Error in handle_userlist_command: {str(e)}")
+        await safe_respond(event, f"❌ Error getting user list: {str(e)}")
 
 async def handle_backup_command(event):
     """Handle backup command."""
-    processing_msg = await safe_respond(event, "💾 **Creating System Backup**\n\nBacking up configuration and settings...")
-    
-    result = await run_shell_command("sh /root/REVDBOT/plugins/backup.sh", timeout=60)
-    
-    keyboard = get_main_keyboard()
-    await safe_respond(event, f"```\n{result}\n```", buttons=keyboard)
+    try:
+        processing_msg = await safe_respond(event, "💾 **Creating System Backup**\n\nBacking up configuration and settings...")
+        
+        script_path = "/root/REVDBOT/plugins/backup.sh"
+        
+        if not os.path.exists(script_path):
+            await safe_respond(event, f"❌ Backup script not found at {script_path}")
+            return
+        
+        os.chmod(script_path, 0o755)
+        result = await run_shell_command(f"sh {script_path}", timeout=60)
+        
+        keyboard = get_main_keyboard()
+        await safe_respond(event, f"```\n{result}\n```", buttons=keyboard)
+        
+    except Exception as e:
+        logger.error(f"Error in handle_backup_command: {str(e)}")
+        await safe_respond(event, f"❌ Error creating backup: {str(e)}")
 
 async def handle_stats_command(event):
     """Handle bot statistics command."""
@@ -754,8 +906,13 @@ async def handle_update_confirm(event):
     update_msg = await safe_respond(event, "⬆️ **Starting Bot Update**\n\nDownloading latest version from GitHub...\nPlease wait...")
     
     # Execute update
-    result = await run_shell_command("sh /root/REVDBOT/plugins/update.sh", timeout=120)
-    await safe_respond(event, f"```\n{result}\n```")
+    script_path = "/root/REVDBOT/plugins/update.sh"
+    if os.path.exists(script_path):
+        os.chmod(script_path, 0o755)
+        result = await run_shell_command(f"sh {script_path}", timeout=120)
+        await safe_respond(event, f"```\n{result}\n```")
+    else:
+        await safe_respond(event, "❌ Update script not found")
 
 async def handle_uninstall_command(event):
     """Handle uninstall command."""
@@ -790,15 +947,25 @@ async def handle_uninstall_all(event):
     """Handle complete uninstall."""
     uninstall_msg = await safe_respond(event, "🗑️ **Complete Bot Removal**\n\nRemoving all bot files and configuration...\nGoodbye! 👋")
     
-    result = await run_shell_command("sh /root/REVDBOT/plugins/uninstall.sh n")
-    await safe_respond(event, f"```\n{result}\n```")
+    script_path = "/root/REVDBOT/plugins/uninstall.sh"
+    if os.path.exists(script_path):
+        os.chmod(script_path, 0o755)
+        result = await run_shell_command(f"sh {script_path} n")
+        await safe_respond(event, f"```\n{result}\n```")
+    else:
+        await safe_respond(event, "❌ Uninstall script not found")
 
 async def handle_uninstall_keep(event):
     """Handle uninstall with config backup."""
     uninstall_msg = await safe_respond(event, "💾 **Uninstalling with Configuration Backup**\n\nSaving configuration and removing bot...\nYou can reinstall later with saved settings!")
     
-    result = await run_shell_command("sh /root/REVDBOT/plugins/uninstall.sh y")
-    await safe_respond(event, f"```\n{result}\n```")
+    script_path = "/root/REVDBOT/plugins/uninstall.sh"
+    if os.path.exists(script_path):
+        os.chmod(script_path, 0o755)
+        result = await run_shell_command(f"sh {script_path} y")
+        await safe_respond(event, f"```\n{result}\n```")
+    else:
+        await safe_respond(event, "❌ Uninstall script not found")
 
 async def handle_history_command(event):
     """Handle command history."""
