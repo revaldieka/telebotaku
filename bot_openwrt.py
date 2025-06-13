@@ -86,16 +86,50 @@ bot_stats = {
     'command_history': []
 }
 
-# Rate limiting tracking
-rate_limit_tracker = {
-    'last_unauthorized_response': 0,
-    'unauthorized_count': 0,
-    'flood_wait_until': 0
+# Rate limiting and flood control
+flood_control = {
+    'unauthorized_users': {},  # Track unauthorized users
+    'flood_wait_until': 0,     # Global flood wait timestamp
+    'last_response_time': 0    # Last response timestamp
 }
 
 def is_admin(user_id: int) -> bool:
     """Check if user is admin."""
     return user_id == CONFIG['admin_id']
+
+def should_respond_to_unauthorized(user_id: int) -> bool:
+    """Check if we should respond to unauthorized user (rate limiting)."""
+    current_time = time.time()
+    
+    # Check if user exists in tracking
+    if user_id not in flood_control['unauthorized_users']:
+        flood_control['unauthorized_users'][user_id] = {
+            'last_response': 0,
+            'message_count': 0,
+            'blocked_until': 0
+        }
+    
+    user_data = flood_control['unauthorized_users'][user_id]
+    
+    # If user is temporarily blocked
+    if current_time < user_data['blocked_until']:
+        return False
+    
+    # If last response was less than 5 minutes ago, don't respond
+    if current_time - user_data['last_response'] < 300:  # 5 minutes
+        user_data['message_count'] += 1
+        
+        # If user sent more than 3 messages, block for 1 hour
+        if user_data['message_count'] > 3:
+            user_data['blocked_until'] = current_time + 3600  # 1 hour
+            logger.warning(f"User {user_id} blocked for 1 hour due to spam")
+        
+        return False
+    
+    # Reset message count and allow response
+    user_data['message_count'] = 1
+    user_data['last_response'] = current_time
+    return True
 
 def log_command(user_id: int, username: str, command: str):
     """Log command execution."""
@@ -118,13 +152,20 @@ def log_command(user_id: int, username: str, command: str):
     logger.info(f"Command executed: {command} by {username} ({user_id})")
 
 async def safe_respond(event, message, buttons=None, **kwargs):
-    """Safely respond to messages with flood control."""
+    """Safely respond to messages with comprehensive flood control."""
     try:
-        # Check if we're in a flood wait period
         current_time = time.time()
-        if current_time < rate_limit_tracker['flood_wait_until']:
-            logger.warning(f"Skipping response due to flood wait until {rate_limit_tracker['flood_wait_until']}")
+        
+        # Check global flood wait
+        if current_time < flood_control['flood_wait_until']:
+            logger.warning(f"Skipping response due to global flood wait until {flood_control['flood_wait_until']}")
             return None
+        
+        # Rate limit responses (minimum 1 second between responses)
+        if current_time - flood_control['last_response_time'] < 1:
+            await asyncio.sleep(1)
+        
+        flood_control['last_response_time'] = time.time()
         
         if buttons:
             return await event.respond(message, buttons=buttons, **kwargs)
@@ -134,17 +175,12 @@ async def safe_respond(event, message, buttons=None, **kwargs):
     except FloodWaitError as e:
         # Handle flood wait error
         wait_time = e.seconds
-        rate_limit_tracker['flood_wait_until'] = current_time + wait_time
+        flood_control['flood_wait_until'] = current_time + wait_time
         logger.error(f"FloodWaitError: Must wait {wait_time} seconds")
         
-        # Try to send a simple message about the delay (if not in flood wait)
-        try:
-            await asyncio.sleep(2)  # Small delay before retry
-            await event.respond(f"⚠️ Rate limited. Please wait {wait_time} seconds before next command.")
-        except:
-            pass  # If this also fails, just log it
-        
+        # Don't try to send another message during flood wait
         return None
+        
     except Exception as e:
         logger.error(f"Error in safe_respond: {str(e)}")
         bot_stats['errors_count'] += 1
@@ -262,14 +298,17 @@ async def start_handler(event):
     username = event.sender.username or event.sender.first_name or "Unknown"
     
     if not is_admin(user_id):
-        # Rate limit unauthorized responses
-        current_time = time.time()
-        if current_time - rate_limit_tracker['last_unauthorized_response'] < 60:  # 1 minute cooldown
-            logger.warning(f"Rate limiting unauthorized response from {username} ({user_id})")
+        # Check if we should respond to this unauthorized user
+        if not should_respond_to_unauthorized(user_id):
+            logger.info(f"Rate limiting unauthorized user {username} ({user_id})")
             return
         
-        rate_limit_tracker['last_unauthorized_response'] = current_time
-        await safe_respond(event, "❌ **Access Denied**\n\nThis bot is restricted to the administrator only.")
+        await safe_respond(event, 
+            "❌ **Access Denied**\n\n"
+            "This bot is restricted to the administrator only.\n"
+            "Contact the device owner for access.\n\n"
+            "🌐 **REVD.CLOUD** - Professional OpenWRT Solutions"
+        )
         logger.warning(f"Unauthorized access attempt by {username} ({user_id})")
         return
     
@@ -287,19 +326,22 @@ async def start_handler(event):
 👤 **Admin**: {username}
 🆔 **Your ID**: `{user_id}`
 
-**🌐 REVD.CLOUD Services:**
-• Professional OpenWRT management solutions
-• Custom bot development & deployment
+**🌐 REVD.CLOUD Professional Services:**
+• Custom OpenWRT bot development
 • Network infrastructure consulting
-• 24/7 technical support
+• Remote device management solutions
+• 24/7 technical support & monitoring
 
-**Quick Actions:**
-Use the buttons below for quick access to all features!
+**🚀 Quick Actions:**
+Use the buttons below for instant access to all features!
 
-**Contact & Support:**
+**📞 Contact & Support:**
 • Website: https://revd.cloud
 • Telegram: @ValltzID
 • Instagram: @revd.cloud
+• Email: support@revd.cloud
+
+**⚡ Powered by REVD.CLOUD Technology**
 """
     
     keyboard = get_main_keyboard()
@@ -312,7 +354,8 @@ async def menu_handler(event):
     username = event.sender.username or event.sender.first_name or "Unknown"
     
     if not is_admin(user_id):
-        await safe_respond(event, "❌ Access denied.")
+        if should_respond_to_unauthorized(user_id):
+            await safe_respond(event, "❌ Access denied.")
         return
     
     log_command(user_id, username, "/menu")
@@ -351,7 +394,7 @@ async def menu_handler(event):
 • Remove bot from system
 • Command execution history
 
-**🌐 REVD.CLOUD Services:**
+**🌐 REVD.CLOUD Professional Services:**
 • **Website:** https://revd.cloud
 • **Telegram:** @ValltzID
 • **Instagram:** @revd.cloud
@@ -371,7 +414,8 @@ async def help_handler(event):
     username = event.sender.username or event.sender.first_name or "Unknown"
     
     if not is_admin(user_id):
-        await safe_respond(event, "❌ Access denied.")
+        if should_respond_to_unauthorized(user_id):
+            await safe_respond(event, "❌ Access denied.")
         return
     
     log_command(user_id, username, "/help")
@@ -379,7 +423,7 @@ async def help_handler(event):
     device_info = get_device_info()
     
     help_text = f"""
-🤖 **{CONFIG['device_name']} Bot - Detailed Help**
+🤖 **{CONFIG['device_name']} Bot - Complete Guide**
 
 📡 **Device:** {device_info['hostname']} | **Version:** {device_info['version']}
 
@@ -400,6 +444,7 @@ async def help_handler(event):
 **📈 Bot Commands:**
 • **Bot Stats** - Bot performance and usage statistics
 • **Help** - This detailed help information
+• **Menu** - Show main menu with device information
 
 **🔐 Admin Commands:**
 • **Update Bot** - Update bot to latest version from GitHub
@@ -417,6 +462,7 @@ async def help_handler(event):
 • Command logging and audit trail
 • Session management and timeout protection
 • Unauthorized access monitoring
+• Rate limiting and flood protection
 
 **🌐 REVD.CLOUD Professional Services:**
 
@@ -425,6 +471,7 @@ async def help_handler(event):
 • Network infrastructure consulting
 • Remote device management solutions
 • 24/7 technical support and monitoring
+• Enterprise deployment services
 
 **📞 Contact Information:**
 • **Website:** https://revd.cloud
@@ -437,12 +484,14 @@ async def help_handler(event):
 • Proven track record in network solutions
 • Custom solutions for enterprise clients
 • Competitive pricing and fast delivery
+• Professional support and maintenance
 
 **📋 Our Portfolio:**
 • Telegram bot automation systems
 • Network monitoring solutions
 • Custom firmware development
 • IoT device management platforms
+• Enterprise network consulting
 
 **🎯 Get Professional Support:**
 Contact us for custom bot features, enterprise deployments, or technical consulting services.
@@ -661,6 +710,11 @@ async def handle_stats_command(event):
         stats_text += "• No commands executed yet\n"
     
     stats_text += f"""
+**🛡️ Security Status:**
+• **Unauthorized Attempts:** {len(flood_control['unauthorized_users'])}
+• **Flood Protection:** Active
+• **Rate Limiting:** Enabled
+
 **🌐 REVD.CLOUD Services:**
 • Professional OpenWRT solutions
 • Custom bot development
@@ -781,7 +835,8 @@ async def system_text_command(event):
     username = event.sender.username or event.sender.first_name or "Unknown"
     
     if not is_admin(user_id):
-        await safe_respond(event, "❌ Access denied.")
+        if should_respond_to_unauthorized(user_id):
+            await safe_respond(event, "❌ Access denied.")
         return
     
     log_command(user_id, username, "/system")
@@ -794,7 +849,8 @@ async def ping_text_command(event):
     username = event.sender.username or event.sender.first_name or "Unknown"
     
     if not is_admin(user_id):
-        await safe_respond(event, "❌ Access denied.")
+        if should_respond_to_unauthorized(user_id):
+            await safe_respond(event, "❌ Access denied.")
         return
     
     target = event.pattern_match.group(1) or "google.com"
@@ -808,7 +864,8 @@ async def reboot_text_command(event):
     username = event.sender.username or event.sender.first_name or "Unknown"
     
     if not is_admin(user_id):
-        await safe_respond(event, "❌ Access denied.")
+        if should_respond_to_unauthorized(user_id):
+            await safe_respond(event, "❌ Access denied.")
         return
     
     log_command(user_id, username, "/reboot")
@@ -821,7 +878,8 @@ async def clearram_text_command(event):
     username = event.sender.username or event.sender.first_name or "Unknown"
     
     if not is_admin(user_id):
-        await safe_respond(event, "❌ Access denied.")
+        if should_respond_to_unauthorized(user_id):
+            await safe_respond(event, "❌ Access denied.")
         return
     
     log_command(user_id, username, "/clearram")
@@ -834,7 +892,8 @@ async def network_text_command(event):
     username = event.sender.username or event.sender.first_name or "Unknown"
     
     if not is_admin(user_id):
-        await safe_respond(event, "❌ Access denied.")
+        if should_respond_to_unauthorized(user_id):
+            await safe_respond(event, "❌ Access denied.")
         return
     
     log_command(user_id, username, "/network")
@@ -847,7 +906,8 @@ async def speedtest_text_command(event):
     username = event.sender.username or event.sender.first_name or "Unknown"
     
     if not is_admin(user_id):
-        await safe_respond(event, "❌ Access denied.")
+        if should_respond_to_unauthorized(user_id):
+            await safe_respond(event, "❌ Access denied.")
         return
     
     log_command(user_id, username, "/speedtest")
@@ -860,7 +920,8 @@ async def wifi_text_command(event):
     username = event.sender.username or event.sender.first_name or "Unknown"
     
     if not is_admin(user_id):
-        await safe_respond(event, "❌ Access denied.")
+        if should_respond_to_unauthorized(user_id):
+            await safe_respond(event, "❌ Access denied.")
         return
     
     log_command(user_id, username, "/wifi")
@@ -873,7 +934,8 @@ async def firewall_text_command(event):
     username = event.sender.username or event.sender.first_name or "Unknown"
     
     if not is_admin(user_id):
-        await safe_respond(event, "❌ Access denied.")
+        if should_respond_to_unauthorized(user_id):
+            await safe_respond(event, "❌ Access denied.")
         return
     
     log_command(user_id, username, "/firewall")
@@ -886,7 +948,8 @@ async def userlist_text_command(event):
     username = event.sender.username or event.sender.first_name or "Unknown"
     
     if not is_admin(user_id):
-        await safe_respond(event, "❌ Access denied.")
+        if should_respond_to_unauthorized(user_id):
+            await safe_respond(event, "❌ Access denied.")
         return
     
     log_command(user_id, username, "/userlist")
@@ -899,7 +962,8 @@ async def backup_text_command(event):
     username = event.sender.username or event.sender.first_name or "Unknown"
     
     if not is_admin(user_id):
-        await safe_respond(event, "❌ Access denied.")
+        if should_respond_to_unauthorized(user_id):
+            await safe_respond(event, "❌ Access denied.")
         return
     
     log_command(user_id, username, "/backup")
@@ -912,7 +976,8 @@ async def stats_text_command(event):
     username = event.sender.username or event.sender.first_name or "Unknown"
     
     if not is_admin(user_id):
-        await safe_respond(event, "❌ Access denied.")
+        if should_respond_to_unauthorized(user_id):
+            await safe_respond(event, "❌ Access denied.")
         return
     
     log_command(user_id, username, "/stats")
@@ -925,7 +990,8 @@ async def update_text_command(event):
     username = event.sender.username or event.sender.first_name or "Unknown"
     
     if not is_admin(user_id):
-        await safe_respond(event, "❌ **Admin Access Required**\n\nThis command is restricted to the administrator only.")
+        if should_respond_to_unauthorized(user_id):
+            await safe_respond(event, "❌ **Admin Access Required**\n\nThis command is restricted to the administrator only.")
         return
     
     log_command(user_id, username, "/update")
@@ -938,7 +1004,8 @@ async def uninstall_text_command(event):
     username = event.sender.username or event.sender.first_name or "Unknown"
     
     if not is_admin(user_id):
-        await safe_respond(event, "❌ **Admin Access Required**\n\nThis command is restricted to the administrator only.")
+        if should_respond_to_unauthorized(user_id):
+            await safe_respond(event, "❌ **Admin Access Required**\n\nThis command is restricted to the administrator only.")
         return
     
     log_command(user_id, username, "/uninstall")
@@ -951,7 +1018,8 @@ async def history_text_command(event):
     username = event.sender.username or event.sender.first_name or "Unknown"
     
     if not is_admin(user_id):
-        await safe_respond(event, "❌ **Admin Access Required**\n\nThis command is restricted to the administrator only.")
+        if should_respond_to_unauthorized(user_id):
+            await safe_respond(event, "❌ **Admin Access Required**\n\nThis command is restricted to the administrator only.")
         return
     
     log_command(user_id, username, "/history")
@@ -984,7 +1052,12 @@ async def send_startup_notification():
 • **Auto Backup:** {'✅' if CONFIG['auto_backup'] else '❌'}
 • **Notifications:** {'✅' if CONFIG['notification_enabled'] else '❌'}
 
-**🌐 REVD.CLOUD Services:**
+**🛡️ Security Features:**
+• **Flood Protection:** Active
+• **Rate Limiting:** Enabled
+• **Admin-Only Access:** Enforced
+
+**🌐 REVD.CLOUD Professional Services:**
 Professional OpenWRT management solutions now available!
 • Custom bot development
 • Network infrastructure consulting  
