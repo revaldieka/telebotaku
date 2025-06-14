@@ -20,15 +20,15 @@ Bot Telegram canggih untuk monitoring dan manajemen perangkat OpenWRT dengan fit
 
 ### 🛡️ **Keamanan & Firewall**
 - **🔥 Firewall Status** - Status firewall, rules, dan port forwarding
-- **👥 User List** - Daftar perangkat yang terhubung
-- **🔐 Multi-user Access** - Kontrol akses untuk multiple user
-- **🛡️ Admin Privileges** - Perintah sensitif hanya untuk admin
+- **👥 User List** - Daftar perangkat yang terhubung dengan detail lengkap
+- **🔐 Admin Control** - Kontrol akses untuk perintah sensitif
+- **🛡️ Security Monitoring** - Monitoring keamanan sistem real-time
 
 ### 🚀 **Fitur Lanjutan**
 - **⬆️ Update Bot** - Update otomatis dari GitHub repository
-- **📈 Bot Statistics** - Statistik penggunaan dan performa bot
-- **🗑️ Uninstall** - Penghapusan bersih dengan opsi backup
-- **📝 Command History** - Riwayat perintah yang dieksekusi (admin only)
+- **🗑️ Uninstall** - Penghapusan bersih dengan opsi backup konfigurasi
+- **📝 Interactive Buttons** - Interface button yang mudah digunakan
+- **🔄 Auto-restart** - Service otomatis restart jika terjadi error
 
 ## 🚀 Instalasi
 
@@ -102,14 +102,35 @@ Installer akan secara otomatis:
 6. Klik "Create Application"
 7. Salin **API ID** (angka) dan **API Hash** (kode alfanumerik)
 
-### 4. Multi-User Access (Opsional)
-
-Untuk memberikan akses ke user lain, tambahkan User ID mereka di `allowed_users` (pisahkan dengan koma):
-```
-allowed_users = 123456789,987654321,555666777
-```
-
 ## 🎮 Cara Penggunaan
+
+### Interface Button
+
+Bot menyediakan keyboard interaktif dengan tombol:
+
+**Baris 1:**
+- 📊 **System Info** - Informasi sistem lengkap
+- 🔄 **Reboot** - Restart perangkat
+
+**Baris 2:**
+- 🧹 **Clear RAM** - Bersihkan cache memori
+- 🌐 **Network Stats** - Statistik jaringan
+
+**Baris 3:**
+- 🚀 **Speed Test** - Test kecepatan internet
+- 📡 **Ping Test** - Test konektivitas
+
+**Baris 4:** *(FITUR BARU)*
+- 📶 **WiFi Info** - Informasi WiFi lengkap
+- 🔥 **Firewall** - Status firewall dan keamanan
+
+**Baris 5:** *(FITUR BARU)*
+- 👥 **User List** - Daftar perangkat terhubung
+- 💾 **Backup** - Backup sistem
+
+**Baris 6:**
+- ⬆️ **Update Bot** - Update dari GitHub *(Admin only)*
+- 🗑️ **Uninstall Bot** - Hapus bot *(Admin only)*
 
 ### Perintah Tersedia
 
@@ -123,48 +144,14 @@ allowed_users = 123456789,987654321,555666777
 | `/network` | Statistik jaringan dan penggunaan data | Semua user |
 | `/speedtest` | Test kecepatan internet | Semua user |
 | `/ping [target]` | Ping test ke target (default: google.com) | Semua user |
+| `/wifi` | **BARU** - Informasi WiFi dan client | Semua user |
+| `/firewall` | **BARU** - Status firewall dan rules | Semua user |
 | `/userlist` | Daftar perangkat yang terhubung | Semua user |
-| `/wifi` | Informasi WiFi dan client | Semua user |
-| `/firewall` | Status firewall dan rules | Semua user |
-| `/backup` | Backup konfigurasi sistem | Semua user |
-| `/stats` | Statistik bot dan performa | Semua user |
+| `/backup` | **BARU** - Backup konfigurasi sistem | Semua user |
 | `/update` | Update bot dari GitHub | **Admin only** |
 | `/uninstall` | Hapus bot dari sistem | **Admin only** |
-| `/history` | Riwayat perintah yang dieksekusi | **Admin only** |
 
-### Interface Button
-
-Bot menyediakan keyboard interaktif dengan tombol:
-
-**Baris 1:**
-- 📊 System Info
-- 🔄 Reboot
-
-**Baris 2:**
-- 🧹 Clear RAM
-- 🌐 Network Stats
-
-**Baris 3:**
-- 🚀 Speed Test
-- 📡 Ping Test
-
-**Baris 4:**
-- 📶 WiFi Info
-- 🔥 Firewall
-
-**Baris 5:**
-- 👥 User List
-- 💾 Backup
-
-**Baris 6:**
-- 📈 Bot Stats
-- ⬆️ Update Bot
-
-**Baris 7:**
-- 🗑️ Uninstall Bot
-- ℹ️ Help
-
-## ⚙️ Konfigurasi Lanjutan
+## ⚙️ Konfigurasi
 
 ### File Konfigurasi (`config.ini`)
 
@@ -174,7 +161,6 @@ api_id = YOUR_API_ID
 api_hash = YOUR_API_HASH
 bot_token = YOUR_BOT_TOKEN
 admin_id = YOUR_ADMIN_ID
-allowed_users = USER_ID_1,USER_ID_2,USER_ID_3
 
 [OpenWRT]
 device_name = OpenWRT | REVD.CLOUD
@@ -189,7 +175,34 @@ notification_enabled = true
 | `device_name` | Nama perangkat yang ditampilkan di bot | OpenWRT \| REVD.CLOUD |
 | `auto_backup` | Backup otomatis saat update | true |
 | `notification_enabled` | Notifikasi startup ke admin | true |
-| `allowed_users` | Daftar user ID yang diizinkan akses | (kosong = hanya admin) |
+
+## 🔧 Plugin System
+
+Bot menggunakan sistem plugin modular dengan script shell di direktori `plugins/`:
+
+### Plugin Tersedia
+
+| Plugin | File | Deskripsi |
+|--------|------|-----------|
+| **System Monitor** | `system.sh` | Monitoring sistem real-time |
+| **Memory Cleaner** | `clear_ram.sh` | Pembersihan cache RAM |
+| **Network Stats** | `vnstat.sh` | Statistik penggunaan jaringan |
+| **Speed Test** | `speedtest.sh` | Test kecepatan internet |
+| **Ping Test** | `ping.sh` | Test konektivitas jaringan |
+| **WiFi Info** | `wifi.sh` | **BARU** - Informasi WiFi lengkap |
+| **Firewall Status** | `firewall.sh` | **BARU** - Status firewall |
+| **User List** | `userlist.sh` | Daftar perangkat terhubung |
+| **System Backup** | `backup.sh` | **BARU** - Backup sistem |
+| **System Reboot** | `reboot.sh` | Restart perangkat |
+| **Bot Update** | `update.sh` | Update bot dari GitHub |
+| **Bot Uninstall** | `uninstall.sh` | Penghapusan bot |
+
+### Menambah Plugin Baru
+
+1. Buat script shell baru di `/root/REVDBOT/plugins/`
+2. Berikan permission executable: `chmod +x plugin_name.sh`
+3. Tambahkan ke `required_scripts` di `bot_openwrt.py`
+4. Tambahkan handler dan button di bot
 
 ## 🔧 Manajemen Service
 
@@ -197,22 +210,22 @@ notification_enabled = true
 
 ```bash
 # Start bot
-service revd start
+/etc/init.d/revd start
 
 # Stop bot
-service revd stop
+/etc/init.d/revd stop
 
 # Restart bot
-service revd restart
+/etc/init.d/revd restart
 
 # Check status
-service revd status
+/etc/init.d/revd status
 
 # Enable auto-start
-service revd enable
+/etc/init.d/revd enable
 
 # Disable auto-start
-service revd disable
+/etc/init.d/revd disable
 ```
 
 ### Monitoring Logs
@@ -248,6 +261,21 @@ ps | grep bot_openwrt.py
    opkg list-installed | grep python3
    pip3 list | grep telethon
    ```
+
+### Database Locked Error
+
+Jika terjadi error "database is locked":
+
+```bash
+# Stop service
+/etc/init.d/revd stop
+
+# Remove session files
+rm -f /root/REVDBOT/bot_session.session*
+
+# Restart service
+/etc/init.d/revd start
+```
 
 ### Service Tidak Auto-Start
 
@@ -300,7 +328,7 @@ Bot dapat update otomatis melalui Telegram:
 ```bash
 cd /root/REVDBOT
 git pull origin main
-service revd restart
+/etc/init.d/revd restart
 ```
 
 ### Backup Manual
@@ -352,38 +380,38 @@ cd /tmp && curl -sLko uninstall.sh https://raw.githubusercontent.com/revaldieka/
 
 2. **Gunakan strong bot token** dari BotFather
 
-3. **Batasi akses user** dengan `allowed_users`
+3. **Monitor logs** secara berkala
 
-4. **Monitor logs** secara berkala
-
-5. **Update bot** secara rutin
+4. **Update bot** secara rutin
 
 ### Security Features
 
-- ✅ **Multi-layer authorization** (admin + allowed users)
-- ✅ **Command logging** dengan timestamp
+- ✅ **Admin-only commands** untuk operasi sensitif
+- ✅ **Command confirmation** untuk operasi berbahaya
 - ✅ **Session management** yang aman
 - ✅ **Input validation** untuk semua perintah
 - ✅ **Timeout protection** untuk operasi long-running
 
-## 📊 Monitoring & Statistics
+## 📊 Fitur Monitoring
 
-### Bot Statistics
-
-Bot menyediakan statistik lengkap:
-- Total perintah yang dieksekusi
-- Uptime bot
-- Memory usage
-- Command frequency
-- Error rate
-
-### System Monitoring
-
+### System Information
 - CPU usage dan temperature
 - Memory usage (RAM/Storage)
-- Network statistics
-- Connected devices
-- Firewall status
+- System uptime dan load average
+- Kernel dan firmware version
+
+### Network Monitoring
+- Bandwidth usage statistics
+- Connected devices list
+- WiFi information dan client count
+- Internet speed testing
+- Network connectivity testing
+
+### Security Monitoring
+- Firewall status dan rules
+- Port forwarding configuration
+- Connection tracking
+- Blocked connections count
 
 ## 🆘 Support & Contact
 
@@ -403,14 +431,22 @@ Bot menyediakan statistik lengkap:
 
 ## 📝 Changelog
 
+### v2.1 (Latest - Enhanced Edition)
+- ✅ **NEW**: WiFi Information plugin dengan detail lengkap
+- ✅ **NEW**: Firewall Status monitoring
+- ✅ **NEW**: System Backup functionality
+- ✅ **IMPROVED**: Button interface dengan 6 baris menu
+- ✅ **IMPROVED**: Plugin system yang lebih modular
+- ✅ **IMPROVED**: Error handling dan logging
+- ✅ **IMPROVED**: Database lock prevention
+- ✅ **FIXED**: Button responsiveness issues
+- ✅ **FIXED**: Access denied problems
+- ✅ **FIXED**: Service startup reliability
+
 ### v2.0 (Enhanced Edition)
-- ✅ Multi-user access control
 - ✅ Enhanced security features
-- ✅ New plugins (WiFi, Firewall, Backup)
-- ✅ Bot statistics and monitoring
 - ✅ Improved error handling
 - ✅ Better logging system
-- ✅ Command history tracking
 - ✅ Auto-backup functionality
 
 ### v1.0 (Original)
@@ -429,3 +465,9 @@ MIT License - Lihat file [LICENSE](LICENSE) untuk detail lengkap.
 **🚀 Developed with ❤️ by REVD.CLOUD**
 
 *Terima kasih telah menggunakan OpenWRT Telegram Bot Enhanced Edition!*
+
+**🔥 Fitur Terbaru v2.1:**
+- 📶 WiFi Info dengan monitoring client real-time
+- 🔥 Firewall Status dengan detail rules
+- 💾 System Backup dengan kompresi otomatis
+- 🎯 Interface button yang lebih lengkap dan responsif
